@@ -221,6 +221,15 @@ export function createVisualController(): VisualController {
       const parts = args.trim().toLowerCase().split(/\s+/).filter(Boolean);
       const [command, option] = parts;
 
+      if (parts.length === 0) {
+        const telemetry = state.telemetry ? "available" : "unavailable";
+        notify(
+          ctx,
+          `ℹ Nox mode: ${state.mode}; header: ${state.headerVisible ? "shown" : "hidden"}; telemetry: ${telemetry}; active tools: ${Object.keys(state.activeTools).length}. Usage: /nox-gentle-shell [compact|detailed|off|header show|header hide|status]`,
+        );
+        return;
+      }
+
       if (
         parts.length === 1 &&
         (command === "compact" || command === "detailed" || command === "off")

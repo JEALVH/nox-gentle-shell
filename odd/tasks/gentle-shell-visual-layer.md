@@ -230,6 +230,27 @@ Checks:
 - Primary LSP diagnostics — clean.
 - pi-lens diagnostics — clean for dispatched current-session files.
 
+### GS-7 — Local preview warning cleanup
+
+- [x] Rename the packaged theme from `nox` to the collision-safe `nox-gentle-shell` identity while preserving the accepted palette.
+- [x] Update installation/configuration documentation and manifest/theme tests for the new theme name.
+- [x] Make bare `/nox-gentle-shell` invocation return useful informational status/help instead of an invalid-usage warning.
+- [x] Preserve warnings for genuinely invalid or extra command arguments.
+- [x] Re-run local package loading, tests, build, and exact publication checks.
+
+Rationale: local `pi --no-session -e .` preview showed that gentle-pi already registers a theme named `nox`, causing a visible collision warning, and bare command invocation produced expected-but-noisy usage warnings. The user selected the namespaced theme identity and confirmed the warnings came from a bare command.
+
+TDD evidence: RED failed four tests for loader identity, packed filename, missing renamed theme asset, and bare-command warning semantics. GREEN passed 46/46 after the minimal rename and informational command behavior. TRIANGULATE added explicit-status and nested-invalid-argument coverage; final tests passed 47/47.
+
+Verification evidence: writer and independent verification passed 47/47 tests, `npm run build`, `git diff --check`, and the exact eight-file npm dry run containing `themes/nox-gentle-shell.json` with no old theme asset. Full palette comparison against the committed `nox` theme confirmed only the identity changed. Live `pi --no-session -e .` preview confirmed that the theme conflict warning disappeared, `nox-gentle-shell` loaded alongside gentle-pi's `nox`, and the command behavior rendered successfully.
+
+### Future improvement — right-panel telemetry card
+
+- [ ] Investigate a documented public extension surface for adding a Nox telemetry card to the right-hand Gentle Shell informational panel.
+- [ ] If a public surface exists, move detailed telemetry out of the main content widget into that card without importing or patching gentle-pi internals.
+
+This is explicitly deferred beyond GS-7. The desired placement is the right-side informational card area shown in the local preview. Implementation is conditional on public API support and must preserve the package's update-safe boundary.
+
 ## Acceptance criteria
 
 - The package loads through Pi's documented package manifest with no extension or theme diagnostics.
@@ -259,8 +280,9 @@ Checks:
 
 ## Current progress
 
-- Completed, committed, and reviewed: GS-1 through GS-5.
-- Completed and verified on `feature/nox-packaging`: GS-6 packaging, documentation, compatibility coverage, informational follow-ups, and installed-package loading.
+- Completed, committed, and reviewed: GS-1 through GS-6; GS-6 commit is `ae5b4a1` on `feature/nox-packaging`.
+- Completed and verified on `feature/nox-local-preview-fixes`: GS-7 local-preview warning cleanup.
 - Documentation decision: use reproducible terminal examples rather than shipped screenshot assets, keeping the publication boundary small and maintainable.
-- Independent verification findings were corrected under strict TDD; final re-verification and high-tier native review passed with no blocking defect.
-- Next step: request explicit user authorization before the GS-6 work-unit commit.
+- Local preview decision: publish the theme as `nox-gentle-shell` to avoid colliding with gentle-pi's existing `nox` theme; bare command invocation should be informative rather than warning-level.
+- Future backlog: investigate moving detailed telemetry into a right-panel informational card using public APIs only.
+- Next step: complete native review and close the GS-7 work-unit commit.

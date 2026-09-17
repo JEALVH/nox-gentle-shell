@@ -288,6 +288,42 @@ test("cleanup is idempotent and lunar frames preserve one terminal-visible width
   );
 });
 
+test("bare command reports current state and concise usage through one info notification", () => {
+  const { ctx, calls } = createContext();
+  const controller = createVisualController();
+  controller.start(ctx as never);
+  const initialState = { ...controller.state };
+  calls.length = 0;
+
+  controller.runCommand("", ctx as never);
+
+  assert.deepEqual(controller.state, initialState);
+  assert.deepEqual(calls, [
+    [
+      "notify",
+      "ℹ Nox mode: compact; header: shown; telemetry: available; active tools: 0. Usage: /nox-gentle-shell [compact|detailed|off|header show|header hide|status]",
+      "info",
+    ],
+  ]);
+});
+
+test("explicit status remains useful through one info notification", () => {
+  const { ctx, calls } = createContext();
+  const controller = createVisualController();
+  controller.start(ctx as never);
+  calls.length = 0;
+
+  controller.runCommand("status", ctx as never);
+
+  assert.deepEqual(calls, [
+    [
+      "notify",
+      "ℹ Nox mode: compact; header: shown; telemetry: available; active tools: 0",
+      "info",
+    ],
+  ]);
+});
+
 test("missing and extra command arguments notify without changing visual state", () => {
   const { ctx, calls } = createContext();
   const controller = createVisualController();
@@ -295,8 +331,8 @@ test("missing and extra command arguments notify without changing visual state",
   controller.runCommand("header hide", ctx as never);
   const initialState = { ...controller.state };
   const invalidArguments = [
-    "",
     "header",
+    "header invalid",
     "header show extra",
     "compact extra",
     "status extra",

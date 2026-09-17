@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
-  "name": "nox",
+  "name": "nox-gentle-shell",
   "vars": {
     "base": "#080A12",
     "element": "#111420",

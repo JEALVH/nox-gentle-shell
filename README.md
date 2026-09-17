@@ -6,8 +6,8 @@ A small Pi package that adds an optional Nox-branded header and finalized-sessio
 
 1. Install the package in the Pi package scope you choose.
 2. Activate it through Pi's `packages` configuration.
-3. Select the packaged `nox` theme yourself if you want the matching palette.
-4. Use `/nox-gentle-shell compact` (the default) or `/nox-gentle-shell detailed`.
+3. Select the packaged `nox-gentle-shell` theme yourself if you want the matching palette.
+4. Run `/nox-gentle-shell` to discover the current state and valid commands, then use `compact` (the default) or `detailed`.
 
 ## Installation
 
@@ -29,7 +29,7 @@ Use your normal Pi configuration location and package-management policy. The pac
 
 ## Activation and configuration
 
-The extension is activated by Pi from the package manifest. It ships a theme named `nox`, but **does not select or change your theme**: select `nox` through your own Pi settings or theme command when you want it. This preserves the prior user choice because the public API has no safe prior-theme restore operation.
+The extension is activated by Pi from the package manifest. It ships a collision-safe theme named `nox-gentle-shell`, but **does not select or change your theme**: select `nox-gentle-shell` through your own Pi settings or theme command when you want it. This preserves the prior user choice because the public API has no safe prior-theme restore operation.
 
 The extension does not mutate Pi settings, install anything globally, or set the terminal title.
 
@@ -37,6 +37,7 @@ The extension does not mutate Pi settings, install anything globally, or set the
 
 | Command | Effect |
 | --- | --- |
+| `/nox-gentle-shell` | Reports current mode, header, telemetry, and active-tool state with concise valid usage. |
 | `/nox-gentle-shell compact` | Shows compact telemetry status and working state while preserving the current Nox header visibility. |
 | `/nox-gentle-shell detailed` | Adds the detailed telemetry widget. |
 | `/nox-gentle-shell off` | Clears every extension-owned UI surface and restores built-in header/working behavior. |

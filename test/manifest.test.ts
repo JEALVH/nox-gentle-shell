@@ -45,6 +45,10 @@ describe("Package Manifest", () => {
     );
     assert.ok(ourExtension, "Should load extension from our package");
     assert.strictEqual(themes.length, 1, "Should load theme from our package");
-    assert.strictEqual(themes[0].name, "nox", "Loaded theme should be nox");
+    assert.strictEqual(
+      themes[0].name,
+      "nox-gentle-shell",
+      "Loaded theme should use the collision-safe public identity",
+    );
   });
 });

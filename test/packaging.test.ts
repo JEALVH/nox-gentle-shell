@@ -15,7 +15,7 @@ const EXPECTED_PACKED_FILES = [
   "extensions/telemetry.ts",
   "extensions/visual-layer.ts",
   "package.json",
-  "themes/nox.json",
+  "themes/nox-gentle-shell.json",
 ];
 
 test("README documents the supported visual-layer contract", () => {
@@ -58,7 +58,7 @@ test("package manifest publishes only runtime sources, metadata, and README", ()
     "extensions/telemetry.ts",
     "extensions/visual-layer.ts",
     "package.json",
-    "themes/nox.json",
+    "themes/nox-gentle-shell.json",
   ]);
 });
 
@@ -70,9 +70,11 @@ test("npm pack dry-run resolves to the exact publication contract", () => {
     }),
   ) as Array<{ files: Array<{ path: string }> }>;
 
-  assert.deepEqual(
-    packed[0]?.files.map((file) => file.path).sort(),
-    [...EXPECTED_PACKED_FILES].sort(),
+  const packedFiles = packed[0]?.files.map((file) => file.path).sort();
+  assert.deepEqual(packedFiles, [...EXPECTED_PACKED_FILES].sort());
+  assert.ok(
+    !packedFiles?.includes("themes/nox.json"),
+    "The collision-prone nox theme file must not be packed",
   );
 });
 
