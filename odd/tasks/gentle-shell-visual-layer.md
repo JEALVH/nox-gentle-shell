@@ -86,9 +86,11 @@ Slash commands remain the reliable fallback because public APIs do not guarantee
 ### Palette and iconography
 
 - The canonical color baseline is the existing `nox` palette. Its values will be copied into this standalone package and maintained locally; `/home/jesus/code/gentle-pi/themes/nox.json` is design reference only and never a runtime dependency.
-- The current `themes/gentle-shell.json` colors are provisional and must be reconciled with the Nox palette before runtime integration.
-- Branded symbols and glyphs remain user-directed. When a concrete icon is needed for the header, telemetry, working state, or alerts, pause at that design point and ask the user to provide or select it.
-- Until a symbol is approved, tests and implementation use semantic text or replaceable placeholders rather than making an irreversible visual choice.
+- The packaged `themes/nox.json` owns the accepted Nox palette locally and has no runtime dependency on gentle-pi.
+- Telemetry symbols are `◉` context, `↑` input, `↓` output, `◇` cache, `$` cost, and `⚙` tools.
+- The working indicator uses the lunar cycle `🌑`, `☾`, `◯`, `☽`, `🌑` (new, waxing, full, waning, new).
+- Alert symbols are `ℹ` info, `⚠` warning, `✖` error, and `✔` success; idle/success status may use `✓`.
+- Approved symbols remain replaceable presentation configuration. Width-sensitive rendering must use terminal-visible width rather than JavaScript string length.
 
 ### Mode behavior
 
@@ -172,26 +174,28 @@ TDD evidence: RED failed on the missing telemetry module. GREEN passed 22/22. TR
 
 Verification evidence: writer build/tests/public-boundary/diff checks passed. Independent verification found shared mutable empty usage; regression tests and a per-call usage factory fixed it. Re-verification passed build, 26/26 tests, public-boundary grep, and diff check. Parent spot-check passed 26/26; primary LSP and pi-lens diagnostics were clean.
 
-Commit evidence: pending explicit authorization for the GS-4 work-unit commit.
+Commit evidence: `d75a644` (`feat(shell): add session telemetry views`) on `feature/nox-telemetry`.
+
+Native review evidence: medium-tier reliability review `review-15632aea1c39c4c2` approved and acknowledged; authority burned at revision `sha256:428a521a5ce1d84093455284d14e7ef8f0f035cf4c44a79b9fc0cc7750e39477` with no findings.
 
 ### GS-5 — Public lifecycle integration and controls
 
-- [ ] Integrate the branded startup banner/header through `setHeader` in TUI mode.
-- [ ] Publish compact telemetry through namespaced `setStatus` without replacing the footer.
-- [ ] Publish detailed telemetry through a namespaced `setWidget` only in detailed mode.
-- [ ] Refresh telemetry after relevant session, message, model, compaction, turn, and tool events.
-- [ ] Apply and restore the working indicator/message through public APIs.
-- [ ] Register `/nox-gentle-shell` modes and header controls.
-- [ ] Register low-conflict TUI shortcuts with slash-command fallbacks.
-- [ ] Guard behavior by `ctx.hasUI` and `ctx.mode` according to the mode matrix.
-- [ ] Clear or restore every extension-owned UI surface on `off` and `session_shutdown`.
-- [ ] Add lifecycle tests with mocked public contexts; no live TUI required.
+- [x] Integrate the branded startup banner/header through `setHeader` in TUI mode.
+- [x] Publish compact telemetry through namespaced `setStatus` without replacing the footer.
+- [x] Publish detailed telemetry through a namespaced `setWidget` only in detailed mode.
+- [x] Refresh telemetry after relevant session, message, model, compaction, turn, and tool events.
+- [x] Apply and restore the lunar working indicator/message through public APIs.
+- [x] Register `/nox-gentle-shell` modes and header controls.
+- [x] Register low-conflict TUI shortcuts with slash-command fallbacks.
+- [x] Guard behavior by `ctx.hasUI` and `ctx.mode` according to the mode matrix.
+- [x] Clear or restore every extension-owned UI surface on `off` and `session_shutdown`.
+- [x] Add lifecycle tests with mocked public contexts; no live TUI required.
 
-Checks:
+TDD evidence: RED failed on the missing runtime controller. GREEN implemented minimal session start, modes, refresh, and cleanup. TRIANGULATE covered RPC/no-UI behavior, invalid/missing/extra command arguments, shortcut cycles, concurrent tools, repeated cleanup, and equal visible-width lunar frames. REFACTOR passed 35/35 tests.
 
-- focused lifecycle/command tests
-- `npm run build`
-- `npm run test`
+Verification evidence: writer build/tests/public-boundary/diff checks passed. Independent verification found no runtime defects and identified low direct-coverage gaps; added tests now cover print-mode commands, every owned cleanup surface, state/context/tool reset, and repeated shutdown. Re-verification passed build, 35/35 tests, public-boundary grep, and diff check. Parent spot-check passed 35/35; primary LSP and pi-lens diagnostics were clean. Live TUI/RPC manual integration remains for GS-6.
+
+Commit evidence: pending explicit authorization for the GS-5 work-unit commit.
 
 ### GS-6 — Packaging, documentation, and compatibility verification
 
@@ -241,8 +245,8 @@ Checks:
 
 ## Current progress
 
-- Completed and committed: GS-1, GS-2, and GS-3.
-- Completed implementation/verification: GS-4 telemetry domain and presentation on `feature/nox-telemetry`.
-- Pending work-unit boundary: GS-4 commit authorization.
-- Planned: GS-5 and GS-6.
-- Next step: close the GS-4 commit boundary, then implement GS-5 lifecycle integration under strict TDD.
+- Completed, committed, and reviewed: GS-1 through GS-4.
+- Completed implementation/verification: GS-5 lifecycle integration and controls on `feature/nox-lifecycle`.
+- Pending work-unit boundary: GS-5 commit authorization.
+- Planned for the next session: GS-6 packaging, documentation, compatibility matrix, and final verification.
+- Next step: close the GS-5 commit boundary, save session state, and resume GS-6 in a fresh session.
