@@ -138,20 +138,22 @@ Reopened rationale: the user selected the existing `nox` theme as the canonical 
 
 TDD evidence: RED failed on missing `renderNoxBanner`, absent `themes/nox.json`, and the old `gentle-shell` identity. GREEN passed 11/11. TRIANGULATE added semantic boundary and extremely narrow cases and passed 12/12. REFACTOR extracted shared banner formatting and remained 12/12.
 
-Verification evidence: writer build/tests/theme replacement checks passed; independent verification passed build, 12/12 tests, and theme replacement checks; parent spot-check passed 12/12; primary LSP diagnostics were clean. The known private theme-schema path remains assigned to GS-3. No commit exists because commit authorization has not been given.
+Verification evidence: writer build/tests/theme replacement checks passed; independent verification passed build, 12/12 tests, and theme replacement checks; parent spot-check passed 12/12; primary LSP diagnostics were clean. The known private theme-schema path remains assigned to GS-3.
+
+Commit evidence: `588701d` (`feat(shell): scaffold Nox visual layer`) on `feature/nox-visual-layer`. Native review was unavailable for this root commit because no prior base ref exists (`empty_candidate_base_ref_required`); no lineage was created. The independent-verifier fallback completed successfully.
 
 ### GS-3 — Public-contract hardening
 
-- [ ] Replace the theme test's private `dist/.../theme-schema.json` dependency with a project-owned validation of the documented theme contract.
-- [ ] Test manifest theme discovery and public loader diagnostics without private imports.
-- [ ] Define stable `nox-gentle-shell` namespaced identifiers for status, widget, commands, and shortcuts.
-- [ ] Document supported Pi baseline and peer-dependency policy without claiming unrestricted compatibility.
+- [x] Replace the theme test's private `dist/.../theme-schema.json` dependency with a project-owned validation of the documented theme contract.
+- [x] Test manifest theme discovery and public loader diagnostics without private imports.
+- [x] Define stable `nox-gentle-shell` namespaced identifiers for status, widget, commands, and shortcuts.
+- [x] Document supported Pi baseline and peer-dependency policy without claiming unrestricted compatibility.
 
-Checks:
+TDD evidence: RED failed on the existing private Pi path, missing constants module, and wildcard peer ranges. GREEN passed 15/15. TRIANGULATE added collision, namespace-boundary, and distinct-shortcut cases; REFACTOR passed 16/16.
 
-- `npm run build`
-- `npm run test`
-- repository search finds no runtime or test imports from Pi `dist/` paths or gentle-pi sources
+Verification evidence: writer build/tests/public-boundary/offline-lock/diff checks passed. Independent verification initially found incomplete hex/namespace/optional-token checks; corrections enforced six-digit hex, own-property variable references, optional-token separation, and lookalike rejection. Re-verification passed all commands and 16/16 tests. Parent spot-check passed 16/16; primary LSP and pi-lens diagnostics were clean.
+
+Commit evidence: pending explicit authorization for the GS-3 work-unit commit.
 
 ### GS-4 — Telemetry domain and presentation
 
@@ -228,11 +230,13 @@ Checks:
 - Effective TDD mode: strict TDD, explicitly selected by the user on 2026-09-17.
 - For GS-3 through GS-5, record observed RED, minimal GREEN, TRIANGULATE where another case is needed, and REFACTOR evidence using `npm test`; never infer RED from a test written after implementation.
 - Forecast: approximately 550–750 authored changed lines across GS-3 through GS-6.
-- Delivery strategy: `ask-on-risk`; if the implementation exceeds roughly 400 authored changed lines before a delivery boundary, choose a chain strategy before the next commit.
-- No commits or remote currently exist. Commit, push, and PR actions require explicit user authorization under repository safety policy.
+- Delivery strategy: `feature-branch-chain`, explicitly selected after the initial work unit reached 726 authored changed lines excluding the lockfile and ODD document.
+- Slice 1: `feature/nox-visual-layer`, commit `588701d`, contains GS-1 and GS-2.
+- Future commits, pushes, and PR actions continue to require explicit user authorization under repository safety policy.
 
 ## Current progress
 
-- Completed: GS-1 and GS-2.
-- Planned: GS-3 through GS-6.
-- Next step: implement GS-3 public-contract hardening under strict TDD.
+- Completed: GS-1, GS-2, and GS-3 implementation/verification.
+- Pending work-unit boundary: GS-3 commit authorization.
+- Planned: GS-4 through GS-6.
+- Next step: close the GS-3 commit boundary, then implement GS-4 telemetry under strict TDD.
