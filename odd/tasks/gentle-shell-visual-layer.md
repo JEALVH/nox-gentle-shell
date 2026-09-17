@@ -49,8 +49,10 @@ The MVP will show only data available through documented Pi APIs:
 Compact example:
 
 ```text
-ctx 42% · in 18.2k · out 3.1k · $0.08 · tools 1
+◉ 42% · ↑ 18.2k · ↓ 3.1k · $ 0.08 · ⚙ 1
 ```
+
+Provisional replaceable symbol mapping: `◉` context, `↑` input, `↓` output, `◇` cache, `$` cost, and `⚙` tools. These belong to presentation configuration, not telemetry aggregation logic.
 
 Detailed mode may show:
 
@@ -153,22 +155,24 @@ TDD evidence: RED failed on the existing private Pi path, missing constants modu
 
 Verification evidence: writer build/tests/public-boundary/offline-lock/diff checks passed. Independent verification initially found incomplete hex/namespace/optional-token checks; corrections enforced six-digit hex, own-property variable references, optional-token separation, and lookalike rejection. Re-verification passed all commands and 16/16 tests. Parent spot-check passed 16/16; primary LSP and pi-lens diagnostics were clean.
 
-Commit evidence: pending explicit authorization for the GS-3 work-unit commit.
+Commit evidence: `43105b1` (`refactor(shell): harden public contracts`) on `feature/nox-public-contracts`.
+
+Native review evidence: medium-tier reliability review `review-72139ff5abb63136` approved and acknowledged; authority burned at revision `sha256:202161663f1cf4a470a3259053c1cdf533e562f41f217172684d8e5ea52f8593`. One informational warning (`R3-incomplete-public-boundary-guard`) remains separate later work and did not open correction.
 
 ### GS-4 — Telemetry domain and presentation
 
-- [ ] Add pure telemetry types and aggregation from public session entries.
-- [ ] Aggregate finalized input/output/cache/total tokens and cost without mutating session data.
-- [ ] Model unavailable and post-compaction context usage explicitly.
-- [ ] Track turns and concurrent active tools through deterministic state transitions.
-- [ ] Add compact status and detailed widget renderers with width-safe degradation.
-- [ ] Test assistant, tool-result, compaction, branch-summary, missing-usage, resumed-session, and concurrent-tool cases.
+- [x] Add pure telemetry types and aggregation from public session entries.
+- [x] Aggregate finalized input/output/cache/total tokens and cost without mutating session data.
+- [x] Model unavailable and post-compaction context usage explicitly.
+- [x] Track turns and concurrent active tools through deterministic state transitions.
+- [x] Add compact status and detailed widget renderers with width-safe degradation.
+- [x] Test assistant, tool-result, compaction, branch-summary, missing-usage, resumed-session, and concurrent-tool cases.
 
-Checks:
+TDD evidence: RED failed on the missing telemetry module. GREEN passed 22/22. TRIANGULATE added post-compaction null context, resumed/non-assistant usage, concurrent/unknown tools, Unicode widths, independent empty snapshots, missing cost, and ordered segment removal. REFACTOR extracted independent usage creation and passed 26/26.
 
-- focused telemetry tests
-- `npm run build`
-- `npm run test`
+Verification evidence: writer build/tests/public-boundary/diff checks passed. Independent verification found shared mutable empty usage; regression tests and a per-call usage factory fixed it. Re-verification passed build, 26/26 tests, public-boundary grep, and diff check. Parent spot-check passed 26/26; primary LSP and pi-lens diagnostics were clean.
+
+Commit evidence: pending explicit authorization for the GS-4 work-unit commit.
 
 ### GS-5 — Public lifecycle integration and controls
 
@@ -197,6 +201,7 @@ Checks:
 - [ ] Add an explicit npm publication allowlist so tests, ODD artifacts, and local tooling are excluded.
 - [ ] Verify the packed file list and package installation path.
 - [ ] Run a manual compatibility matrix for TUI, RPC, print, and JSON modes where feasible.
+- [ ] Strengthen the public-boundary guard so non-root/private Pi subpath imports cannot bypass the contract test (`R3-incomplete-public-boundary-guard`).
 - [ ] Record any skipped environment-dependent checks honestly.
 
 Checks:
@@ -236,7 +241,8 @@ Checks:
 
 ## Current progress
 
-- Completed: GS-1, GS-2, and GS-3 implementation/verification.
-- Pending work-unit boundary: GS-3 commit authorization.
-- Planned: GS-4 through GS-6.
-- Next step: close the GS-3 commit boundary, then implement GS-4 telemetry under strict TDD.
+- Completed and committed: GS-1, GS-2, and GS-3.
+- Completed implementation/verification: GS-4 telemetry domain and presentation on `feature/nox-telemetry`.
+- Pending work-unit boundary: GS-4 commit authorization.
+- Planned: GS-5 and GS-6.
+- Next step: close the GS-4 commit boundary, then implement GS-5 lifecycle integration under strict TDD.

@@ -1,5 +1,6 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { ActiveTools, TelemetrySnapshot } from "./telemetry.js";
 
 export interface HeaderOptions {
   title: string;
@@ -125,6 +126,113 @@ export function renderStatus({
   const truncatedText = truncateToWidth(formattedText, availableForText, "…");
 
   return `${prefix}${truncatedText}`;
+}
+
+export interface TelemetrySymbols {
+  context: string;
+  input: string;
+  output: string;
+  cache: string;
+  cost: string;
+  tools: string;
+}
+
+/** Provisional presentation data; telemetry aggregation is intentionally symbol-free. */
+export const DEFAULT_TELEMETRY_SYMBOLS: TelemetrySymbols = {
+  context: "◉",
+  input: "↑",
+  output: "↓",
+  cache: "◇",
+  cost: "$",
+  tools: "⚙",
+};
+
+export interface TelemetryRenderOptions {
+  telemetry: TelemetrySnapshot;
+  activeTools: ActiveTools;
+  maxWidth: number;
+  symbols?: TelemetrySymbols;
+}
+
+function formatCompactNumber(value: number): string {
+  const absolute = Math.abs(value);
+  if (absolute >= 1_000_000) return `${formatDecimal(value / 1_000_000)}m`;
+  if (absolute >= 1_000) return `${formatDecimal(value / 1_000)}k`;
+  return String(value);
+}
+
+function formatDecimal(value: number): string {
+  return value.toFixed(1).replace(/\.0$/, "");
+}
+
+function formatMoney(value: number): string {
+  return `$${value.toFixed(2)}`;
+}
+
+function activeToolNames(activeTools: ActiveTools): string[] {
+  return Object.values(activeTools)
+    .map((tool) => tool.toolName)
+    .sort();
+}
+
+/**
+ * Render finalized totals as a compact status line. Segments are omitted from
+ * right to left as space narrows; they never represent live streaming usage.
+ */
+export function renderCompactTelemetry({
+  telemetry,
+  activeTools,
+  maxWidth,
+  symbols = DEFAULT_TELEMETRY_SYMBOLS,
+}: TelemetryRenderOptions): string {
+  if (maxWidth <= 0) return "";
+
+  const { context, usage } = telemetry;
+  const segments = [
+    `${symbols.context} ${context.percent === null ? "—" : `${formatDecimal(context.percent)}%`}`,
+    `${symbols.input} ${formatCompactNumber(usage.input)}`,
+    `${symbols.output} ${formatCompactNumber(usage.output)}`,
+    `${symbols.cache} ${formatCompactNumber(usage.cacheRead + usage.cacheWrite)}`,
+    `${symbols.cost} ${formatMoney(usage.cost).slice(1)}`,
+    `${symbols.tools} ${Object.keys(activeTools).length}`,
+  ];
+
+  while (segments.length > 1 && visibleWidth(segments.join(" · ")) > maxWidth) {
+    segments.pop();
+  }
+
+  const output = segments.join(" · ");
+  return visibleWidth(output) <= maxWidth
+    ? output
+    : truncateToWidth(output, maxWidth, "…");
+}
+
+/** Render semantic, width-safe detail lines for finalized session telemetry. */
+export function renderDetailedTelemetry({
+  telemetry,
+  activeTools,
+  maxWidth,
+}: TelemetryRenderOptions): string[] {
+  if (maxWidth <= 0) return [];
+
+  const { context, usage, counts } = telemetry;
+  const contextLine =
+    context.tokens === null
+      ? `context unavailable${context.contextWindow === null ? "" : ` / ${formatCompactNumber(context.contextWindow)}`}`
+      : `context ${formatCompactNumber(context.tokens)} / ${context.contextWindow === null ? "—" : formatCompactNumber(context.contextWindow)} (${context.percent === null ? "—" : `${formatDecimal(context.percent)}%`})`;
+  const tools = activeToolNames(activeTools);
+  const lines = [
+    contextLine,
+    `usage (finalized) in ${formatCompactNumber(usage.input)} · out ${formatCompactNumber(usage.output)} · cache ${formatCompactNumber(usage.cacheRead + usage.cacheWrite)}`,
+    `cost (finalized) ${formatMoney(usage.cost)}`,
+    `activity messages ${counts.messageEntries} · assistant turns ${counts.assistantTurns} · tools ${tools.length === 0 ? "none" : tools.join(", ")}`,
+  ];
+
+  return lines.map((line) =>
+    visibleWidth(line) <= maxWidth
+      ? line
+      : truncateToWidth(line, maxWidth, "…"),
+  );
 }
 
 export interface AlertOptions {
