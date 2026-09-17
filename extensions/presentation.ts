@@ -151,6 +151,7 @@ export interface TelemetryRenderOptions {
   telemetry: TelemetrySnapshot;
   activeTools: ActiveTools;
   maxWidth: number;
+  model?: string;
   symbols?: TelemetrySymbols;
 }
 
@@ -212,6 +213,7 @@ export function renderDetailedTelemetry({
   telemetry,
   activeTools,
   maxWidth,
+  model,
 }: TelemetryRenderOptions): string[] {
   if (maxWidth <= 0) return [];
 
@@ -222,6 +224,7 @@ export function renderDetailedTelemetry({
       : `context ${formatCompactNumber(context.tokens)} / ${context.contextWindow === null ? "—" : formatCompactNumber(context.contextWindow)} (${context.percent === null ? "—" : `${formatDecimal(context.percent)}%`})`;
   const tools = activeToolNames(activeTools);
   const lines = [
+    ...(model ? [`model ${model}`] : []),
     contextLine,
     `usage (finalized) in ${formatCompactNumber(usage.input)} · out ${formatCompactNumber(usage.output)} · cache ${formatCompactNumber(usage.cacheRead + usage.cacheWrite)}`,
     `cost (finalized) ${formatMoney(usage.cost)}`,

@@ -5,6 +5,11 @@
   "keywords": [
     "pi-package"
   ],
+  "files": [
+    "extensions",
+    "themes",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "tsx --test test/*.test.ts"

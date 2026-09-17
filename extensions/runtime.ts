@@ -45,6 +45,8 @@ export const NOX_WORKING_INDICATOR: WorkingIndicatorOptions = {
 };
 
 const NOX_WORKING_MESSAGE = "Nox working";
+/** RPC widgets have no terminal width, so use one stable public string-array width. */
+const RPC_WIDGET_WIDTH = 120;
 const RENDER_WIDTH = 120;
 const NEXT_MODE: Readonly<Record<VisualMode, VisualMode>> = {
   compact: "detailed",
@@ -129,13 +131,24 @@ export function createVisualController(): VisualController {
     );
 
     if (state.mode === "detailed") {
-      const detail = renderDetailedTelemetry({
-        telemetry,
-        activeTools: state.activeTools,
-        maxWidth: RENDER_WIDTH,
-      });
-      if (state.model) detail.unshift(`model ${state.model}`);
-      ctx.ui.setWidget(NOX_GENTLE_SHELL_WIDGET_KEY, detail);
+      const renderDetail = (width: number) =>
+        renderDetailedTelemetry({
+          telemetry,
+          activeTools: state.activeTools,
+          model: state.model,
+          maxWidth: width,
+        });
+      if (ctx.mode === "tui") {
+        ctx.ui.setWidget(NOX_GENTLE_SHELL_WIDGET_KEY, (_tui, _theme) => ({
+          render: renderDetail,
+          invalidate() {},
+        }));
+      } else {
+        ctx.ui.setWidget(
+          NOX_GENTLE_SHELL_WIDGET_KEY,
+          renderDetail(RPC_WIDGET_WIDTH),
+        );
+      }
     } else {
       ctx.ui.setWidget(NOX_GENTLE_SHELL_WIDGET_KEY, undefined);
     }

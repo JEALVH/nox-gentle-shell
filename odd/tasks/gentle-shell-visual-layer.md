@@ -195,26 +195,40 @@ TDD evidence: RED failed on the missing runtime controller. GREEN implemented mi
 
 Verification evidence: writer build/tests/public-boundary/diff checks passed. Independent verification found no runtime defects and identified low direct-coverage gaps; added tests now cover print-mode commands, every owned cleanup surface, state/context/tool reset, and repeated shutdown. Re-verification passed build, 35/35 tests, public-boundary grep, and diff check. Parent spot-check passed 35/35; primary LSP and pi-lens diagnostics were clean. Live TUI/RPC manual integration remains for GS-6.
 
-Commit evidence: pending explicit authorization for the GS-5 work-unit commit.
+Commit evidence: `c28614c` (`feat(shell): integrate lifecycle controls`) on `feature/nox-lifecycle`.
+
+Native review evidence: medium-tier reliability review `review-53a9018fd013a426` approved and acknowledged; authority burned at revision `sha256:266d36381478bd987531fca21ec52f42854f60c8caadead1388811407d9cb69e`. Informational warnings `R3-model-width` and `R3-session-switch` remain separate GS-6 compatibility work and did not open correction.
 
 ### GS-6 — Packaging, documentation, and compatibility verification
 
-- [ ] Add README installation, activation, configuration, telemetry semantics, commands, shortcuts, and screenshots/examples.
-- [ ] Document TUI/RPC/print/JSON behavior and known shortcut collision limits.
-- [ ] Document that built-in/core alerts cannot be globally restyled; only extension-owned notifications are branded.
-- [ ] Add an explicit npm publication allowlist so tests, ODD artifacts, and local tooling are excluded.
-- [ ] Verify the packed file list and package installation path.
-- [ ] Run a manual compatibility matrix for TUI, RPC, print, and JSON modes where feasible.
-- [ ] Strengthen the public-boundary guard so non-root/private Pi subpath imports cannot bypass the contract test (`R3-incomplete-public-boundary-guard`).
-- [ ] Record any skipped environment-dependent checks honestly.
+- [x] Add README installation, activation, configuration, telemetry semantics, commands, shortcuts, and reproducible terminal examples.
+- [x] Document TUI/RPC/print/JSON behavior and known shortcut collision limits.
+- [x] Document that built-in/core alerts cannot be globally restyled; only extension-owned notifications are branded.
+- [x] Add an explicit npm publication allowlist so tests, ODD artifacts, and local tooling are excluded.
+- [x] Verify the packed file list and package installation path.
+- [x] Run a compatibility matrix for TUI, RPC, print, and JSON modes where feasible; automated public-context coverage passed, while live host sessions were unavailable.
+- [x] Strengthen the public-boundary guard so non-root/private Pi subpath imports cannot bypass the contract test (`R3-incomplete-public-boundary-guard`).
+- [x] Verify model-label width behavior in narrow runtime status/widget surfaces (`R3-model-width`).
+- [x] Verify session-switch/reset behavior does not carry stale controller state across sessions (`R3-session-switch`).
+- [x] Record skipped environment-dependent checks honestly.
+
+TDD evidence: RED exposed the missing README/publication allowlist and static detailed widget, then successive parser-level RED cases exposed commented/options dynamic imports, property/comment false positives, protected-root filtering gaps, and inline import types. GREEN and TRIANGULATE ended at 45/45 tests with TypeScript-AST extraction covering the intended statically extractable module-reference forms.
+
+Verification evidence: writer and independent verification passed `npm test` (45/45), `npm run build`, and `npm pack --dry-run --json`. The tarball contains exactly eight allowlisted files: `README.md`, five `extensions/*.ts` runtime sources, `package.json`, and `themes/nox.json`. Primary LSP diagnostics were clean, the parent spot-check passed 45/45, and pi-lens reported no current-session issues.
+
+Installation evidence: the tarball installed successfully into `/tmp/gs6-package-check.C6TuHu/stage`; public `DefaultResourceLoader` loading from that installed path produced no extension errors or theme diagnostics, found the installed extension source, and loaded exactly one `nox` theme.
+
+Native review evidence: high-tier review `review-32c539a1e2cae7e2` completed all four lenses, approved, and was acknowledged at burned revision `sha256:f0e8896687d1a809be4b67437f02463c58dcfa0d216851283a0b6e9d7900cd6e`. Non-blocking informational follow-ups are duplicated publication fixtures (`R2-duplicated-publication-fixture`), duplicated width constants (`R2-duplicated-width-constant`), and the intentionally out-of-scope CommonJS boundary (`R3-commonjs-boundary-gap`); none opened correction.
+
+Skipped checks: live interactive TUI/RPC/print/JSON sessions, real shortcut-collision behavior, and terminal-specific glyph rendering were unavailable in this headless verification context. Their public-context behavior is covered by mocks; session replacement remains a lifecycle simulation rather than a live host switch.
 
 Checks:
 
-- `npm run build`
-- `npm run test`
-- `npm pack --dry-run`
-- primary LSP diagnostics
-- pi-lens diagnostics
+- `npm run build` — passed.
+- `npm run test` — passed, 45/45.
+- `npm pack --dry-run --json` — passed, exact eight-file boundary.
+- Primary LSP diagnostics — clean.
+- pi-lens diagnostics — clean for dispatched current-session files.
 
 ## Acceptance criteria
 
@@ -245,8 +259,8 @@ Checks:
 
 ## Current progress
 
-- Completed, committed, and reviewed: GS-1 through GS-4.
-- Completed implementation/verification: GS-5 lifecycle integration and controls on `feature/nox-lifecycle`.
-- Pending work-unit boundary: GS-5 commit authorization.
-- Planned for the next session: GS-6 packaging, documentation, compatibility matrix, and final verification.
-- Next step: close the GS-5 commit boundary, save session state, and resume GS-6 in a fresh session.
+- Completed, committed, and reviewed: GS-1 through GS-5.
+- Completed and verified on `feature/nox-packaging`: GS-6 packaging, documentation, compatibility coverage, informational follow-ups, and installed-package loading.
+- Documentation decision: use reproducible terminal examples rather than shipped screenshot assets, keeping the publication boundary small and maintainable.
+- Independent verification findings were corrected under strict TDD; final re-verification and high-tier native review passed with no blocking defect.
+- Next step: request explicit user authorization before the GS-6 work-unit commit.

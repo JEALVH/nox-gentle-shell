@@ -184,6 +184,87 @@ test("refreshes finalized telemetry and reduces interleaved concurrent tool life
   assert.equal(Object.keys(controller.state.activeTools).length, 0);
 });
 
+test("detailed TUI widgets render every Unicode model line within the terminal width", () => {
+  const { ctx, calls } = createContext();
+  ctx.model = { provider: "nox", id: "模型👨‍👩‍👧‍👦-with-a-very-long-label" };
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  controller.setMode("detailed", ctx as never);
+
+  const widget = calls.filter((call) => call[0] === "widget").at(-1);
+  assert.equal(typeof widget?.[2], "function");
+  const component = (widget?.[2] as Function)(
+    {},
+    { fg: (_color: string, text: string) => text },
+  );
+  const lines = component.render(12);
+  assert.ok(lines.every((line: string) => visibleWidth(line) <= 12));
+  assert.ok(lines.some((line: string) => line.includes("model")));
+});
+
+test("detailed RPC widgets remain public string arrays at a deterministic fallback width", () => {
+  const { ctx, calls } = createContext("rpc");
+  ctx.model = { provider: "nox", id: "模型👨‍👩‍👧‍👦-with-a-very-long-label" };
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  controller.setMode("detailed", ctx as never);
+
+  const widget = calls.filter((call) => call[0] === "widget").at(-1);
+  assert.ok(Array.isArray(widget?.[2]));
+  assert.ok(
+    (widget?.[2] as string[]).every((line) => visibleWidth(line) <= 120),
+  );
+});
+
+test("print and JSON modes never issue visual calls, even after commands", () => {
+  for (const mode of ["print", "json"] as const) {
+    const { ctx, calls } = createContext(mode);
+    const controller = createVisualController();
+
+    controller.start(ctx as never);
+    controller.runCommand("detailed", ctx as never);
+    controller.runCommand("off", ctx as never);
+
+    assert.deepEqual(calls, [], `${mode} must remain visually inert`);
+  }
+});
+
+test("session replacement clears detailed telemetry before a fresh compact session starts", () => {
+  const oldSession = createContext();
+  oldSession.ctx.model = { provider: "old", id: "old-model" };
+  const oldController = createVisualController();
+  oldController.start(oldSession.ctx as never);
+  oldController.updateTools(
+    { type: "start", toolCallId: "stale", toolName: "bash" },
+    oldSession.ctx as never,
+  );
+  oldController.setMode("detailed", oldSession.ctx as never);
+  oldController.cleanup(oldSession.ctx as never);
+
+  assert.deepEqual(oldController.state, {
+    mode: "compact",
+    headerVisible: true,
+    activeTools: {},
+    telemetry: undefined,
+    model: undefined,
+  });
+
+  const freshSession = createContext();
+  freshSession.ctx.model = { provider: "fresh", id: "fresh-model" };
+  const freshController = createVisualController();
+  freshController.start(freshSession.ctx as never);
+
+  assert.equal(freshController.state.mode, "compact");
+  assert.equal(freshController.state.model, "fresh/fresh-model");
+  assert.deepEqual(freshController.state.activeTools, {});
+  assert.equal(
+    freshSession.calls.filter((call) => call[0] === "widget").at(-1)?.[2],
+    undefined,
+  );
+});
+
 test("cleanup is idempotent and lunar frames preserve one terminal-visible width", () => {
   assert.deepEqual(LUNAR_WORKING_FRAMES, ["🌑", "☾", "◯", "☽", "🌑"]);
   const widths = (NOX_WORKING_INDICATOR.frames ?? []).map((frame: string) =>
