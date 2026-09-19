@@ -105,17 +105,18 @@ Route: delegated to `gentle-ai-worker` under the multi-file writer trigger.
 - [x] Preserve compact status and existing widget/RPC/print/JSON behavior under every fallback path.
 - [x] Update README behavior and compatibility documentation.
 - [x] Run focused Nox tests, full tests, build, package dry run, LSP, and diff checks.
-- [ ] Create the FSC-4 work-unit commit only after explicit user authorization, then run native committed-range assessment/review.
+- [x] Create user-authorized commit `51ceeddeab2ba21ba7db0f764caf7f4c727c8697` (`feat(shell): consume fullscreen contributions`) and complete/acknowledge its native committed-range review.
 
 Route: delegated to `gentle-ai-worker` under the multi-file writer trigger; dependency provisioning and the packaging-test surface expansion were explicitly authorized.
 
 ### FSC-5 — Verify end-to-end compatibility
 
-- [ ] Add consumer-shaped host fixtures and host-shaped Nox event-bus mocks where coverage is not already present.
-- [ ] Verify no cross-package import, private layout access, or published-package boundary regression exists.
-- [ ] Run independent checks required by the native risk assessment and review route.
-- [ ] Perform a live matrix covering regular/fullscreen, resize, detailed → compact → off, reload, and shutdown.
-- [ ] Record exact verification evidence and remaining visual-only limitations.
+- [x] Confirm existing consumer-shaped host fixtures and host-shaped Nox event-bus mocks cover the cross-package contract without additional source changes.
+- [x] Verify no cross-package import, private layout access, or published-package boundary regression exists.
+- [x] Run independent committed-range and cross-package checks required by native risk assessment and review routing.
+- [x] Perform the live regular/fullscreen, resize, detailed → compact → off, reload, fresh-session, shutdown, and RPC matrix.
+- [x] Record exact verification evidence and remaining environment/transport limitations.
+- [ ] Commit this final verification evidence only after explicit user authorization.
 
 Route: delegated verification according to native risk assessment and RDD state.
 
@@ -133,7 +134,7 @@ Route: delegated verification according to native risk assessment and RDD state.
 
 ## Progress
 
-Architecture mapping, clean worktree setup, strict-TDD selection, and the `stacked-to-main` host strategy are complete. FSC-2 is complete at commit `f8253d90363e2264fb4a1d1cfb3c7dbb5e604913` and its medium-tier native reliability review is approved and acknowledged. FSC-3 is complete at commit `8c5ac0cdd700b47d4c6c2951f341460656b8274c`; its exact five-path +465/-22 candidate was reviewed and committed without drift. Both cohesive host units exceed their individual 300–400-line forecasts; splitting production code from behavior tests would weaken them, so a future `size:exception` recommendation is recorded instead of code-golf or artificial slicing. Running authored-line count: 952 across the two committed host work units. Focused tests, typecheck baseline, primary LSP delta, and diff-check passed on the reconstructed FSC-3 bytes. The full suite passed once and reproduced its prior runtime-harness failure under independent verification; clean-base differential verification then reproduced the exact failure 3/3 under behaviorally equivalent copied assets, proving it pre-existing. Native final-candidate assessment was high risk (`process_boundary`); four-lens review of the exact reconstructed target approved and was acknowledged. The accidental review lineage for the obsolete churned target remains parked and must not be treated as review of this candidate. FSC-4 strict-TDD implementation is complete and verified but remains uncommitted pending explicit authorization. Its cohesive production, tests, and documentation candidate is +460/-10 raw lines excluding this durable task file, slightly above the 300–400 forecast; splitting its adapter from lifecycle/fallback tests would weaken the work unit, so no size-only split or code-golf is planned. Push and PR creation remain unauthorized.
+Architecture mapping, clean worktree setup, strict-TDD selection, and the `stacked-to-main` host strategy are complete. FSC-2 is complete at commit `f8253d90363e2264fb4a1d1cfb3c7dbb5e604913` and its medium-tier native reliability review is approved and acknowledged. FSC-3 is complete at commit `8c5ac0cdd700b47d4c6c2951f341460656b8274c`; its exact five-path +465/-22 candidate was reviewed and committed without drift. Both cohesive host units exceed their individual 300–400-line forecasts; splitting production code from behavior tests would weaken them, so a future `size:exception` recommendation is recorded instead of code-golf or artificial slicing. Running authored-line count: 952 across the two committed host work units. Focused tests, typecheck baseline, primary LSP delta, and diff-check passed on the reconstructed FSC-3 bytes. The full suite passed once and reproduced its prior runtime-harness failure under independent verification; clean-base differential verification then reproduced the exact failure 3/3 under behaviorally equivalent copied assets, proving it pre-existing. Native final-candidate assessment was high risk (`process_boundary`); four-lens review of the exact reconstructed target approved and was acknowledged. The accidental review lineage for the obsolete churned target remains parked and must not be treated as review of this candidate. FSC-4 is complete at commit `51ceeddeab2ba21ba7db0f764caf7f4c727c8697`; its cohesive production, tests, documentation, and ODD evidence total +635/-10 committed lines. The implementation portion was +460/-10 excluding the durable task artifact, slightly above the 300–400 forecast; splitting its adapter from lifecycle/fallback tests would weaken the work unit, so no size-only split or code-golf was used. Native high-tier review approved and was acknowledged. FSC-5 compatibility verification is complete: structural, type, package, tests/build, live TUI, lifecycle, resize, and RPC behavior passed. The isolated harness could not independently prove network inactivity, and RPC transport cannot expose internal rail-event absence; unit/control-flow evidence covers the latter. Final evidence remains uncommitted pending explicit authorization. Push and PR creation remain unauthorized.
 
 ## Verification evidence
 
@@ -169,7 +170,16 @@ Architecture mapping, clean worktree setup, strict-TDD selection, and the `stack
 - FSC-4 RED failed because `extensions/fullscreen-contribution.js` did not exist; minimal GREEN passed the focused suite 31/31; rejection, absent/late response, malformed lease, update failure, shutdown, RPC, and inert-mode triangulation/refactor passed 32/32.
 - Final FSC-4 verification: focused 32/32, full suite 57/57, build passed, package dry run passed with 9 files including `extensions/fullscreen-contribution.ts`, `git diff --check` passed, and primary LSP reported zero errors across the seven changed TypeScript files.
 - Parent structural readback confirmed a transport-only local v1 adapter, synchronous lease acceptance, stale/late response isolation, idempotent disposal, detailed-TUI widget suppression only after acceptance, and preserved RPC/print/JSON behavior.
+- User-authorized commit `51ceeddeab2ba21ba7db0f764caf7f4c727c8697` contains exactly nine cohesive FSC-4 paths (+635/-10 including the ODD task artifact).
+- Native committed-range assessment classified FSC-4 high risk due to the existing packaging subprocess boundary. Independent immutable-range verification passed focused 32/32, full 57/57, build, exact nine-file package dry run, range diff-check, structural boundaries, and clean status.
+- Native high-tier four-lens review `review-bef76baad4fd061d` approved target `sha256:4a76f35180820b5d0937a6938a060b2b59ed18a50c39366bac920ec6f8994689` and was acknowledged. `R3-001` and `R4-001` at `extensions/fullscreen-contribution.ts:83-84` are informational only.
+- FSC-5 runtime event equality passed two assertions; temporary compile-only compatibility passed all three request/response/lease assignability directions; committed Nox extensions had zero forbidden host/private imports and no `gentle-pi` dependency.
+- Host focused suites passed 102/102; Nox focused passed 8/8; Nox full passed 57/57; build and both repository diff checks passed. Nox package dry run contained exactly nine expected files. Host `npm pack --dry-run --json --ignore-scripts` contained 527 entries including both public contract sources and created no archive.
+- Live regular 160×50 showed one five-line detailed widget fallback. Fullscreen 160×50 showed one five-line right-rail block with no above-editor duplicate; resizing to 120×40 moved it above the editor; returning to 160×50 restored the rail and removed fallback.
+- Compact removed detailed telemetry while preserving compact status; off removed Nox detail/status. Reload and a fresh fullscreen process began with compact status only and no stale detail, then accepted a new right-rail detailed contribution.
+- RPC registered `nox-gentle-shell`; detailed produced the public five-line string-array widget; off cleared only Nox status/widget keys. Unit/control-flow evidence confirms RPC never requests the TUI rail, though RPC transport itself cannot expose absence of an internal rail event.
+- The final live rerun used an authorized mode-0700 auth-only temporary snapshot; original auth hash/metadata remained unchanged, no credential contents were printed or parsed, all temp roots/processes/sockets were removed, and both repositories retained their exact expected state. Offline flags did not independently prove network inactivity; provider quota and an extra built-in `llama` command were observed as environment limitations, with no model completion events.
 
 ## Next step
 
-Request explicit authorization for the local FSC-4 Conventional Commit. After commit, run native committed-range assessment/review before FSC-5. Keep obsolete lineage `review-0db4c4694e6e4460` parked. Push and PR remain unauthorized.
+Request explicit authorization for the final documentation-only FSC-5 evidence commit. Then decide delivery for the two stacked host work units and the Nox consumer; push and PR remain unauthorized. Keep obsolete lineage `review-0db4c4694e6e4460` parked.
