@@ -6,7 +6,7 @@ import {
 import { createVisualController } from "./runtime.js";
 
 export default function (pi: ExtensionAPI) {
-  const controller = createVisualController();
+  const controller = createVisualController(pi.events);
 
   pi.on("session_start", (_event, ctx) => controller.start(ctx));
   pi.on("session_shutdown", (_event, ctx) => controller.cleanup(ctx));

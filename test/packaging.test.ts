@@ -10,6 +10,7 @@ const projectPath = (...segments: string[]) =>
 const EXPECTED_PACKED_FILES = [
   "README.md",
   "extensions/constants.ts",
+  "extensions/fullscreen-contribution.ts",
   "extensions/presentation.ts",
   "extensions/runtime.ts",
   "extensions/telemetry.ts",
@@ -53,6 +54,7 @@ test("package manifest publishes only runtime sources, metadata, and README", ()
   assert.deepEqual(EXPECTED_PACKED_FILES, [
     "README.md",
     "extensions/constants.ts",
+    "extensions/fullscreen-contribution.ts",
     "extensions/presentation.ts",
     "extensions/runtime.ts",
     "extensions/telemetry.ts",

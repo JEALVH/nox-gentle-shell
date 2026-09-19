@@ -1,8 +1,13 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
+  NOX_GENTLE_SHELL_FULLSCREEN_CONTRIBUTION_KEY,
   NOX_GENTLE_SHELL_STATUS_KEY,
   NOX_GENTLE_SHELL_WIDGET_KEY,
 } from "./constants.js";
+import {
+  createFullscreenContributionClient,
+  type FullscreenContributionEvents,
+} from "./fullscreen-contribution.js";
 import {
   renderCompactTelemetry,
   renderDetailedTelemetry,
@@ -60,8 +65,11 @@ export interface VisualController {
  * Stateful orchestration seam for public Pi lifecycle hooks. It never stores a
  * host context, so shutdown can release the session without retaining it.
  */
-export function createVisualController(): VisualController {
+export function createVisualController(
+  events?: FullscreenContributionEvents,
+): VisualController {
   let state = emptyState();
+  const fullscreenContribution = createFullscreenContributionClient(events);
 
   const refreshSnapshot = (ctx: ExtensionContext) => {
     state = {
@@ -81,6 +89,9 @@ export function createVisualController(): VisualController {
   };
 
   const apply = (ctx: ExtensionContext) => {
+    if (state.mode !== "detailed" || ctx.mode !== "tui") {
+      fullscreenContribution.dispose();
+    }
     if (!ctx.hasUI) return;
 
     if (state.mode === "off") {
@@ -109,10 +120,19 @@ export function createVisualController(): VisualController {
           maxWidth: width,
         });
       if (ctx.mode === "tui") {
-        ctx.ui.setWidget(NOX_GENTLE_SHELL_WIDGET_KEY, (_tui, _theme) => ({
-          render: renderDetail,
-          invalidate() {},
-        }));
+        const accepted = fullscreenContribution.update({
+          version: 1,
+          key: NOX_GENTLE_SHELL_FULLSCREEN_CONTRIBUTION_KEY,
+          surface: "rail",
+          render: () => renderDetail(RENDER_WIDTH),
+          fallback: "widget",
+        });
+        ctx.ui.setWidget(
+          NOX_GENTLE_SHELL_WIDGET_KEY,
+          accepted
+            ? undefined
+            : (_tui, _theme) => ({ render: renderDetail, invalidate() {} }),
+        );
       } else {
         ctx.ui.setWidget(
           NOX_GENTLE_SHELL_WIDGET_KEY,
@@ -198,6 +218,7 @@ export function createVisualController(): VisualController {
       );
     },
     cleanup(ctx) {
+      fullscreenContribution.dispose();
       clearVisuals(ctx);
       state = emptyState();
     },
