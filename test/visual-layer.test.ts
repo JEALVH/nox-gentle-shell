@@ -61,7 +61,7 @@ function createContext(mode: "tui" | "print" = "tui") {
   };
 }
 
-test("registers one namespaced command, accepted shortcuts, and telemetry lifecycle handlers", () => {
+test("registers one namespaced command, mode shortcut, and telemetry lifecycle handlers", () => {
   const { handlers, commands, shortcuts } = createExtensionRegistration();
 
   assert.deepEqual(
@@ -70,10 +70,7 @@ test("registers one namespaced command, accepted shortcuts, and telemetry lifecy
   );
   assert.deepEqual(
     shortcuts.map((shortcut) => shortcut.key),
-    [
-      NOX_GENTLE_SHELL_SHORTCUTS.cycleMode.key,
-      NOX_GENTLE_SHELL_SHORTCUTS.toggleHeader.key,
-    ],
+    [NOX_GENTLE_SHELL_SHORTCUTS.cycleMode.key],
   );
   for (const event of [
     "session_start",
@@ -104,7 +101,7 @@ test("registered command is inert in print mode", async () => {
   assert.deepEqual(calls, []);
 });
 
-test("session shutdown restores every owned TUI surface and remains safe when repeated", () => {
+test("session shutdown clears only namespaced TUI surfaces and remains safe when repeated", () => {
   const { handlers } = createExtensionRegistration();
   const { ctx, calls } = createContext();
   const start = handlers.get("session_start")?.[0]!;
@@ -117,9 +114,6 @@ test("session shutdown restores every owned TUI surface and remains safe when re
   assert.deepEqual(calls, [
     ["status", NOX_GENTLE_SHELL_STATUS_KEY, undefined],
     ["widget", NOX_GENTLE_SHELL_WIDGET_KEY, undefined],
-    ["header", undefined],
-    ["workingMessage"],
-    ["workingIndicator"],
   ]);
 
   calls.length = 0;
@@ -127,8 +121,5 @@ test("session shutdown restores every owned TUI surface and remains safe when re
   assert.deepEqual(calls, [
     ["status", NOX_GENTLE_SHELL_STATUS_KEY, undefined],
     ["widget", NOX_GENTLE_SHELL_WIDGET_KEY, undefined],
-    ["header", undefined],
-    ["workingMessage"],
-    ["workingIndicator"],
   ]);
 });

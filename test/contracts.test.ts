@@ -229,10 +229,6 @@ test("exports stable command, UI key, and shortcut values", () => {
       identifier: "nox-gentle-shell.shortcut.cycle-mode",
       key: "ctrl+alt+t",
     },
-    toggleHeader: {
-      identifier: "nox-gentle-shell.shortcut.toggle-header",
-      key: "ctrl+alt+h",
-    },
   });
 });
 

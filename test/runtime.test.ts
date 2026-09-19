@@ -1,15 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  createVisualController,
-  LUNAR_WORKING_FRAMES,
-  NOX_WORKING_INDICATOR,
-} from "../extensions/runtime.js";
+import { createVisualController } from "../extensions/runtime.js";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import {
   NOX_GENTLE_SHELL_STATUS_KEY,
   NOX_GENTLE_SHELL_WIDGET_KEY,
 } from "../extensions/constants.js";
+
+const SINGLETON_UI_SURFACES = new Set([
+  "header",
+  "workingMessage",
+  "workingIndicator",
+]);
 
 function createContext(mode: "tui" | "rpc" | "json" | "print" = "tui") {
   const calls: Array<[string, ...unknown[]]> = [];
@@ -45,14 +47,12 @@ function createContext(mode: "tui" | "rpc" | "json" | "print" = "tui") {
   };
 }
 
-test("controller starts compact TUI UI with header, telemetry, and lunar working state", () => {
+test("controller starts compact TUI UI with namespaced telemetry only", () => {
   const { ctx, calls } = createContext();
   const controller = createVisualController();
 
   controller.start(ctx as never);
 
-  const header = calls.find((call) => call[0] === "header");
-  assert.equal(typeof header?.[1], "function");
   assert.deepEqual(
     calls.find((call) => call[0] === "status"),
     [
@@ -65,14 +65,7 @@ test("controller starts compact TUI UI with header, telemetry, and lunar working
     calls.find((call) => call[0] === "widget"),
     ["widget", NOX_GENTLE_SHELL_WIDGET_KEY, undefined],
   );
-  assert.deepEqual(
-    calls.find((call) => call[0] === "workingMessage"),
-    ["workingMessage", "Nox working"],
-  );
-  assert.deepEqual(
-    calls.find((call) => call[0] === "workingIndicator"),
-    ["workingIndicator", { frames: ["🌑", "☾ ", "◯ ", "☽ ", "🌑"] }],
-  );
+  assert.ok(calls.every(([surface]) => !SINGLETON_UI_SURFACES.has(surface)));
 });
 
 test("controller uses only RPC-compatible UI and leaves no-UI modes untouched", () => {
@@ -89,7 +82,7 @@ test("controller uses only RPC-compatible UI and leaves no-UI modes untouched", 
   assert.deepEqual(noUi.calls, []);
 });
 
-test("commands and shortcuts cycle modes, toggle headers, and reject invalid input without changing state", () => {
+test("commands and shortcuts cycle modes and reject invalid input without changing state", () => {
   const { ctx, calls } = createContext();
   const controller = createVisualController();
   controller.start(ctx as never);
@@ -115,10 +108,6 @@ test("commands and shortcuts cycle modes, toggle headers, and reject invalid inp
   controller.cycleMode(ctx as never);
   assert.equal(controller.state.mode, "compact");
 
-  controller.toggleHeader(ctx as never);
-  assert.equal(controller.state.headerVisible, false);
-  controller.runCommand("header show", ctx as never);
-  assert.equal(controller.state.headerVisible, true);
   controller.runCommand("status", ctx as never);
   assert.match(String(calls.at(-1)?.[1]), /Nox mode: compact/);
 
@@ -127,7 +116,7 @@ test("commands and shortcuts cycle modes, toggle headers, and reject invalid inp
   assert.deepEqual(controller.state, previous);
   assert.deepEqual(calls.at(-1), [
     "notify",
-    "⚠ Usage: /nox-gentle-shell [compact|detailed|off|header show|header hide|status]",
+    "⚠ Usage: /nox-gentle-shell [compact|detailed|off|status]",
     "warning",
   ]);
 });
@@ -245,7 +234,6 @@ test("session replacement clears detailed telemetry before a fresh compact sessi
 
   assert.deepEqual(oldController.state, {
     mode: "compact",
-    headerVisible: true,
     activeTools: {},
     telemetry: undefined,
     model: undefined,
@@ -265,13 +253,7 @@ test("session replacement clears detailed telemetry before a fresh compact sessi
   );
 });
 
-test("cleanup is idempotent and lunar frames preserve one terminal-visible width", () => {
-  assert.deepEqual(LUNAR_WORKING_FRAMES, ["🌑", "☾", "◯", "☽", "🌑"]);
-  const widths = (NOX_WORKING_INDICATOR.frames ?? []).map((frame: string) =>
-    visibleWidth(frame),
-  );
-  assert.ok(widths.every((width: number) => width === widths[0]));
-
+test("cleanup is idempotent and clears only namespaced UI surfaces", () => {
   const { ctx, calls } = createContext();
   const controller = createVisualController();
   controller.start(ctx as never);
@@ -282,10 +264,7 @@ test("cleanup is idempotent and lunar frames preserve one terminal-visible width
     calls.filter((call) => call[0] === "status" && call[2] === undefined)
       .length >= 2,
   );
-  assert.ok(
-    calls.filter((call) => call[0] === "workingIndicator" && call.length === 1)
-      .length >= 2,
-  );
+  assert.ok(calls.every(([surface]) => !SINGLETON_UI_SURFACES.has(surface)));
 });
 
 test("bare command reports current state and concise usage through one info notification", () => {
@@ -301,7 +280,7 @@ test("bare command reports current state and concise usage through one info noti
   assert.deepEqual(calls, [
     [
       "notify",
-      "ℹ Nox mode: compact; header: shown; telemetry: available; active tools: 0. Usage: /nox-gentle-shell [compact|detailed|off|header show|header hide|status]",
+      "ℹ Nox mode: compact; telemetry: available; active tools: 0. Usage: /nox-gentle-shell [compact|detailed|off|status]",
       "info",
     ],
   ]);
@@ -318,7 +297,7 @@ test("explicit status remains useful through one info notification", () => {
   assert.deepEqual(calls, [
     [
       "notify",
-      "ℹ Nox mode: compact; header: shown; telemetry: available; active tools: 0",
+      "ℹ Nox mode: compact; telemetry: available; active tools: 0",
       "info",
     ],
   ]);
@@ -328,14 +307,11 @@ test("missing and extra command arguments notify without changing visual state",
   const { ctx, calls } = createContext();
   const controller = createVisualController();
   controller.start(ctx as never);
-  controller.runCommand("header hide", ctx as never);
   const initialState = { ...controller.state };
   const invalidArguments = [
-    "header",
-    "header invalid",
-    "header show extra",
     "compact extra",
     "status extra",
+    "header show",
     "unknown option",
   ];
 
@@ -350,7 +326,7 @@ test("missing and extra command arguments notify without changing visual state",
     assert.deepEqual(calls, [
       [
         "notify",
-        "⚠ Usage: /nox-gentle-shell [compact|detailed|off|header show|header hide|status]",
+        "⚠ Usage: /nox-gentle-shell [compact|detailed|off|status]",
         "warning",
       ],
     ]);
@@ -371,9 +347,6 @@ test("off clears every owned surface and cleanup drops stale telemetry and activ
   assert.deepEqual(calls, [
     ["status", NOX_GENTLE_SHELL_STATUS_KEY, undefined],
     ["widget", NOX_GENTLE_SHELL_WIDGET_KEY, undefined],
-    ["header", undefined],
-    ["workingMessage"],
-    ["workingIndicator"],
   ]);
 
   calls.length = 0;
@@ -381,15 +354,23 @@ test("off clears every owned surface and cleanup drops stale telemetry and activ
   assert.deepEqual(calls, [
     ["status", NOX_GENTLE_SHELL_STATUS_KEY, undefined],
     ["widget", NOX_GENTLE_SHELL_WIDGET_KEY, undefined],
-    ["header", undefined],
-    ["workingMessage"],
-    ["workingIndicator"],
   ]);
   assert.deepEqual(controller.state, {
     mode: "compact",
-    headerVisible: true,
     activeTools: {},
     telemetry: undefined,
     model: undefined,
   });
+});
+
+test("start, refresh, off, and shutdown never call singleton UI APIs", () => {
+  const { ctx, calls } = createContext();
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  controller.refresh(ctx as never);
+  controller.setMode("off", ctx as never);
+  controller.cleanup(ctx as never);
+
+  assert.ok(calls.every(([surface]) => !SINGLETON_UI_SURFACES.has(surface)));
 });

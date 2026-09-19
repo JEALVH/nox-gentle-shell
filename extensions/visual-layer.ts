@@ -43,16 +43,12 @@ export default function (pi: ExtensionAPI) {
   );
 
   pi.registerCommand(NOX_GENTLE_SHELL_COMMAND_NAME, {
-    description: "Control Nox visual telemetry and header.",
+    description: "Control Nox visual telemetry.",
     handler: async (args, ctx) => controller.runCommand(args, ctx),
   });
 
   pi.registerShortcut(NOX_GENTLE_SHELL_SHORTCUTS.cycleMode.key, {
     description: "Cycle Nox visual mode",
     handler: (ctx) => controller.cycleMode(ctx),
-  });
-  pi.registerShortcut(NOX_GENTLE_SHELL_SHORTCUTS.toggleHeader.key, {
-    description: "Toggle Nox header",
-    handler: (ctx) => controller.toggleHeader(ctx),
   });
 }
