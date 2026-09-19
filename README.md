@@ -1,6 +1,6 @@
 # Nox Gentle Shell visual layer
 
-A small Pi package that adds an optional Nox-branded header and finalized-session telemetry. It uses public Pi APIs only, leaves the built-in footer in place, and never changes your selected theme or terminal title.
+A small Pi package that adds finalized-session telemetry through namespaced status and widget surfaces. It uses public Pi APIs only, leaves Pi's shared header, working presentation, and built-in footer untouched, and never changes your selected theme or terminal title.
 
 ## Quick path
 
@@ -37,18 +37,15 @@ The extension does not mutate Pi settings, install anything globally, or set the
 
 | Command | Effect |
 | --- | --- |
-| `/nox-gentle-shell` | Reports current mode, header, telemetry, and active-tool state with concise valid usage. |
-| `/nox-gentle-shell compact` | Shows compact telemetry status and working state while preserving the current Nox header visibility. |
-| `/nox-gentle-shell detailed` | Adds the detailed telemetry widget. |
-| `/nox-gentle-shell off` | Clears every extension-owned UI surface and restores built-in header/working behavior. |
-| `/nox-gentle-shell header show` | Shows the branded header. |
-| `/nox-gentle-shell header hide` | Hides the branded header without disabling telemetry. |
-| `/nox-gentle-shell status` | Reports mode, header state, telemetry availability, and active tool count. |
+| `/nox-gentle-shell` | Reports current mode, telemetry, and active-tool state with concise valid usage. |
+| `/nox-gentle-shell compact` | Shows compact namespaced telemetry status. |
+| `/nox-gentle-shell detailed` | Adds the detailed namespaced telemetry widget. |
+| `/nox-gentle-shell off` | Clears the extension-owned namespaced status and widget. |
+| `/nox-gentle-shell status` | Reports mode, telemetry availability, and active tool count. |
 
 ### Shortcuts and collisions
 
 - `Ctrl+Alt+T` cycles `compact → detailed → off`.
-- `Ctrl+Alt+H` toggles the Nox header.
 
 Shortcuts are a convenience, not a guarantee. User keybindings or a later-loaded extension can supersede them. The slash commands above are the reliable collision fallback.
 
@@ -69,7 +66,7 @@ It is not a continuously streaming exact token or cost total. Missing host data,
 | `$` | Finalized cost |
 | `⚙` | Active tools |
 
-The working indicator cycles through `🌑`, `☾`, `◯`, `☽`, `🌑`. Extension-owned notifications use `ℹ`, `⚠`, `✖`, and `✔` where appropriate.
+Extension-owned notifications use `ℹ`, `⚠`, `✖`, and `✔` where appropriate.
 
 ## Reproducible terminal examples
 
@@ -97,7 +94,6 @@ Narrow TUI widgets render each line against the terminal width, including long U
 
 | Surface | TUI | RPC | Print | JSON |
 | --- | --- | --- | --- | --- |
-| Header and working indicator | Yes | No assumption | No | No |
 | Namespaced status | Yes | Fire-and-forget compatible | No | No |
 | Detailed widget | Width-aware component | String-array fallback | No | No |
 | Extension notifications | Explicit actions only | Fire-and-forget compatible | No | No |
@@ -106,4 +102,4 @@ Only extension-owned notifications are branded. Built-in or core alerts cannot b
 
 ## Cleanup and off behavior
 
-`off` and `session_shutdown` clear the namespaced status and widget, remove the package header, and restore Pi's default working message and indicator. They do not alter your theme, terminal title, or any core UI surface. A replacement session starts with fresh compact state, telemetry, model identity, and tool activity.
+`off` and `session_shutdown` clear only the namespaced status and widget. They do not alter your theme, terminal title, header, working message, working indicator, or any other core UI surface. A replacement session starts with fresh compact state, telemetry, model identity, and tool activity.
