@@ -129,6 +129,7 @@ export function renderStatus({
 }
 
 export interface TelemetrySymbols {
+  model?: string;
   context: string;
   input: string;
   output: string;
@@ -139,6 +140,7 @@ export interface TelemetrySymbols {
 
 /** Provisional presentation data; telemetry aggregation is intentionally symbol-free. */
 export const DEFAULT_TELEMETRY_SYMBOLS: TelemetrySymbols = {
+  model: "◆",
   context: "◉",
   input: "↑",
   output: "↓",
@@ -153,6 +155,8 @@ export interface TelemetryRenderOptions {
   maxWidth: number;
   model?: string;
   symbols?: TelemetrySymbols;
+  /** Optional so pure callers retain the existing unstyled string contract. */
+  theme?: Theme;
 }
 
 function formatCompactNumber(value: number): string {
@@ -208,33 +212,126 @@ export function renderCompactTelemetry({
     : truncateToWidth(output, maxWidth, "…");
 }
 
-/** Render semantic, width-safe detail lines for finalized session telemetry. */
+function truncatePlainToWidth(value: string, width: number): string {
+  if (width <= 0) return "";
+  if (visibleWidth(value) <= width) return value;
+  if (visibleWidth("…") > width) return "";
+
+  let truncated = "";
+  for (const character of value) {
+    if (visibleWidth(`${truncated}${character}…`) > width) break;
+    truncated += character;
+  }
+  return `${truncated}…`;
+}
+
+function fillToWidth(value: string, width: number, styled: boolean): string {
+  const truncated = styled
+    ? truncateToWidth(value, width, "…")
+    : truncatePlainToWidth(value, width);
+  return `${truncated}${" ".repeat(Math.max(0, width - visibleWidth(truncated)))}`;
+}
+
+type TelemetryRole = "accent" | "border" | "dim" | "muted" | "text";
+
+function telemetryRole(
+  theme: Theme | undefined,
+  role: TelemetryRole,
+  value: string,
+): string {
+  return theme ? theme.fg(role, value) : value;
+}
+
+function telemetryMetric(
+  theme: Theme | undefined,
+  glyph: string,
+  value: string,
+): string {
+  return `${telemetryRole(theme, "muted", glyph)} ${telemetryRole(theme, "text", value)}`;
+}
+
+function telemetrySeparator(theme: Theme | undefined): string {
+  return telemetryRole(theme, "dim", " · ");
+}
+
+function renderTelemetryCard(
+  lines: string[],
+  maxWidth: number,
+  theme: Theme | undefined,
+): string[] {
+  if (maxWidth <= 0) return [];
+  if (maxWidth === 1) return [telemetryRole(theme, "border", "│")];
+
+  const border = (value: string) => telemetryRole(theme, "border", value);
+  const innerWidth = maxWidth - 2;
+  const title = "Nox 🌑";
+  const titledRuleWidth = visibleWidth(`┌─ ${title} ┐`);
+  const top =
+    maxWidth >= titledRuleWidth
+      ? `${border("┌─ ")}${telemetryRole(theme, "accent", title)}${border(` ${"─".repeat(maxWidth - titledRuleWidth)}┐`)}`
+      : `${border("┌")}${border("─".repeat(innerWidth))}${border("┐")}`;
+  const contentWidth = Math.max(0, innerWidth - 2);
+  const body = lines.map((line) => {
+    if (innerWidth < 2) {
+      return `${border("│")}${fillToWidth(line, innerWidth, Boolean(theme))}${border("│")}`;
+    }
+    return `${border("│")} ${fillToWidth(line, contentWidth, Boolean(theme))} ${border("│")}`;
+  });
+
+  return [
+    top,
+    ...body,
+    `${border("└")}${border("─".repeat(innerWidth))}${border("┘")}`,
+  ];
+}
+
+/** Render finalized telemetry as a width-safe, icon-led Nox card. */
 export function renderDetailedTelemetry({
   telemetry,
   activeTools,
   maxWidth,
   model,
+  symbols = DEFAULT_TELEMETRY_SYMBOLS,
+  theme,
 }: TelemetryRenderOptions): string[] {
-  if (maxWidth <= 0) return [];
-
   const { context, usage, counts } = telemetry;
-  const contextLine =
+  const contextValue =
     context.tokens === null
-      ? `context unavailable${context.contextWindow === null ? "" : ` / ${formatCompactNumber(context.contextWindow)}`}`
-      : `context ${formatCompactNumber(context.tokens)} / ${context.contextWindow === null ? "—" : formatCompactNumber(context.contextWindow)} (${context.percent === null ? "—" : `${formatDecimal(context.percent)}%`})`;
+      ? `unavailable${context.contextWindow === null ? "" : ` / ${formatCompactNumber(context.contextWindow)}`}`
+      : `${formatCompactNumber(context.tokens)} / ${context.contextWindow === null ? "—" : formatCompactNumber(context.contextWindow)} (${context.percent === null ? "—" : `${formatDecimal(context.percent)}%`})`;
   const tools = activeToolNames(activeTools);
-  const lines = [
-    ...(model ? [`model ${model}`] : []),
-    contextLine,
-    `usage (finalized) in ${formatCompactNumber(usage.input)} · out ${formatCompactNumber(usage.output)} · cache ${formatCompactNumber(usage.cacheRead + usage.cacheWrite)}`,
-    `cost (finalized) ${formatMoney(usage.cost)}`,
-    `activity messages ${counts.messageEntries} · assistant turns ${counts.assistantTurns} · tools ${tools.length === 0 ? "none" : tools.join(", ")}`,
-  ];
+  const modelSymbol = symbols.model ?? DEFAULT_TELEMETRY_SYMBOLS.model ?? "◆";
 
-  return lines.map((line) =>
-    visibleWidth(line) <= maxWidth
-      ? line
-      : truncateToWidth(line, maxWidth, "…"),
+  return renderTelemetryCard(
+    [
+      ...(model ? [telemetryMetric(theme, modelSymbol, model ?? "")] : []),
+      telemetryMetric(theme, symbols.context, contextValue),
+      [
+        telemetryMetric(theme, symbols.input, formatCompactNumber(usage.input)),
+        telemetryMetric(
+          theme,
+          symbols.output,
+          formatCompactNumber(usage.output),
+        ),
+        telemetryMetric(
+          theme,
+          symbols.cache,
+          formatCompactNumber(usage.cacheRead + usage.cacheWrite),
+        ),
+      ].join(telemetrySeparator(theme)),
+      telemetryMetric(theme, symbols.cost, formatMoney(usage.cost)),
+      [
+        telemetryMetric(theme, "✉", String(counts.messageEntries)),
+        telemetryMetric(theme, "◌", String(counts.assistantTurns)),
+        telemetryMetric(
+          theme,
+          symbols.tools,
+          tools.length === 0 ? "—" : tools.join(", "),
+        ),
+      ].join(telemetrySeparator(theme)),
+    ],
+    maxWidth,
+    theme,
   );
 }
 

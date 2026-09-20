@@ -109,6 +109,36 @@ test("detailed TUI requests the exact namespaced v1 rail declaration with a widg
   assert.equal(typeof detailedWidget(calls), "function");
 });
 
+test("an accepted rail uses its supplied width and older hosts retain the fallback", () => {
+  const { lease } = createLease();
+  let request: FullscreenContributionRequest | undefined;
+  const controller = createVisualController({
+    emit(_event, payload) {
+      request = payload as FullscreenContributionRequest;
+      request.respond?.({ accepted: true, lease });
+    },
+  });
+  const { ctx } = createContext();
+
+  controller.start(ctx as never);
+  controller.setMode("detailed", ctx as never);
+
+  assert.ok(request);
+  const hostWidthLines = request.declaration.render(47);
+  assert.ok(
+    hostWidthLines.every((line) => visibleWidth(line) === 47),
+    "the host-supplied rail width must control every card line",
+  );
+
+  const omittedWidthLines = request.declaration.render();
+  const undefinedWidthLines = request.declaration.render(undefined);
+  assert.deepEqual(undefinedWidthLines, omittedWidthLines);
+  assert.ok(
+    omittedWidthLines.every((line) => visibleWidth(line) === 120),
+    "older zero-argument hosts retain the safe card width fallback",
+  );
+});
+
 test("an accepted lease suppresses the duplicate TUI widget and updates without reregistering", () => {
   const { lease, calls: leaseCalls } = createLease();
   let emits = 0;
