@@ -39,7 +39,7 @@ The extension does not mutate Pi settings, install anything globally, or set the
 | --- | --- |
 | `/nox-gentle-shell` | Reports current mode, telemetry, and active-tool state with concise valid usage. |
 | `/nox-gentle-shell compact` | Shows compact namespaced telemetry status. |
-| `/nox-gentle-shell detailed` | Adds the detailed namespaced telemetry widget. |
+| `/nox-gentle-shell detailed` | Requests an optional Gentle Shell rail contribution in TUI mode, otherwise adds the detailed namespaced telemetry widget. |
 | `/nox-gentle-shell off` | Clears the extension-owned namespaced status and widget. |
 | `/nox-gentle-shell status` | Reports mode, telemetry availability, and active tool count. |
 
@@ -88,14 +88,14 @@ cost (finalized) $0.08
 activity messages 9 · assistant turns 7 · tools bash
 ```
 
-Narrow TUI widgets render each line against the terminal width, including long Unicode model labels. RPC has no terminal width, so it receives the compatible public string-array widget at a deterministic fallback width.
+Narrow TUI widgets render each line against the terminal width, including long Unicode model labels. In detailed TUI mode, Nox emits the public `gentle-pi.fullscreen-contribution/v1` request with the namespaced `nox-gentle-shell.fullscreen-telemetry` rail key and `widget` fallback. A synchronous accepted lease suppresses Nox's duplicate widget; an absent, inactive, invalid, unsupported, or failing host keeps that widget fallback. Nox disposes an accepted lease when leaving detailed mode or shutting down. RPC has no terminal width, so it receives the compatible public string-array widget at a deterministic fallback width.
 
 ## Mode matrix
 
 | Surface | TUI | RPC | Print | JSON |
 | --- | --- | --- | --- | --- |
 | Namespaced status | Yes | Fire-and-forget compatible | No | No |
-| Detailed widget | Width-aware component | String-array fallback | No | No |
+| Detailed telemetry | Optional public rail contribution, then width-aware widget fallback | String-array widget fallback | No | No |
 | Extension notifications | Explicit actions only | Fire-and-forget compatible | No | No |
 
 Only extension-owned notifications are branded. Built-in or core alerts cannot be globally restyled, intercepted, or recolored by this package. The package also does not replace Pi's full footer.

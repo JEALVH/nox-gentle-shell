@@ -6,6 +6,7 @@ import ts from "typescript";
 
 import {
   NOX_GENTLE_SHELL_COMMAND_NAME,
+  NOX_GENTLE_SHELL_FULLSCREEN_CONTRIBUTION_KEY,
   NOX_GENTLE_SHELL_IDENTIFIERS,
   NOX_GENTLE_SHELL_SHORTCUTS,
   NOX_GENTLE_SHELL_STATUS_KEY,
@@ -220,8 +221,12 @@ test("public-boundary parser ignores nonliteral dynamic and inline type imports,
   }
 });
 
-test("exports stable command, UI key, and shortcut values", () => {
+test("exports stable command, UI key, contribution key, and shortcut values", () => {
   assert.strictEqual(NOX_GENTLE_SHELL_COMMAND_NAME, "nox-gentle-shell");
+  assert.strictEqual(
+    NOX_GENTLE_SHELL_FULLSCREEN_CONTRIBUTION_KEY,
+    "nox-gentle-shell.fullscreen-telemetry",
+  );
   assert.strictEqual(NOX_GENTLE_SHELL_STATUS_KEY, "nox-gentle-shell.status");
   assert.strictEqual(NOX_GENTLE_SHELL_WIDGET_KEY, "nox-gentle-shell.widget");
   assert.deepStrictEqual(NOX_GENTLE_SHELL_SHORTCUTS, {
@@ -264,6 +269,22 @@ test("extension identifiers cannot collide or escape the namespace", () => {
     shortcutKeys.length,
     "Shortcut values must remain distinct",
   );
+});
+
+test("does not import Gentle Shell or host-private modules", () => {
+  const sourceFiles = [
+    ...packageTypeScriptFiles(projectPath("extensions")),
+    ...packageTypeScriptFiles(projectPath("test")),
+  ];
+
+  for (const file of sourceFiles) {
+    const source = fs.readFileSync(file, "utf-8");
+    assert.doesNotMatch(
+      source,
+      /from\s+["'](?:gentle-pi|[^"']*gentle-pi-worktrees[^"']*)["']/,
+      `${path.relative(projectPath(), file)} must not import Gentle Shell`,
+    );
+  }
 });
 
 test("declares the Pi 0.85.1 compatibility baseline", () => {
