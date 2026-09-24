@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createVisualController } from "../extensions/runtime.js";
 import { visibleWidth } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
   NOX_GENTLE_SHELL_STATUS_KEY,
   NOX_GENTLE_SHELL_WIDGET_KEY,
@@ -13,9 +14,40 @@ const SINGLETON_UI_SURFACES = new Set([
   "workingIndicator",
 ]);
 
+function createRecordingTheme() {
+  const roles: string[] = [];
+  const theme = {
+    fg: (role: string, text: string) => {
+      roles.push(role);
+      return `\x1b[36m${text}\x1b[0m`;
+    },
+  } as Theme;
+  return { theme, roles };
+}
+
+const CONTEXT_WARNING =
+  "Context usage reached 80%. Start a new session soon to avoid automatic compaction.";
+
+function contextUsage(percent: number | null) {
+  return percent === null
+    ? { tokens: null, contextWindow: null, percent: null }
+    : { tokens: percent * 10, contextWindow: 1_000, percent };
+}
+
+function contextWarnings(calls: Array<[string, ...unknown[]]>) {
+  return calls.filter(
+    (call) =>
+      call[0] === "notify" &&
+      call[1] === CONTEXT_WARNING &&
+      call[2] === "warning",
+  );
+}
+
 function createContext(mode: "tui" | "rpc" | "json" | "print" = "tui") {
   const calls: Array<[string, ...unknown[]]> = [];
   let entries: unknown[] = [];
+  let currentContextUsage: ReturnType<typeof contextUsage> | undefined =
+    contextUsage(42);
   const ui = {
     setHeader: (...args: unknown[]) => calls.push(["header", ...args]),
     setStatus: (...args: unknown[]) => calls.push(["status", ...args]),
@@ -35,14 +67,13 @@ function createContext(mode: "tui" | "rpc" | "json" | "print" = "tui") {
       ui,
       model: { provider: "nox", id: "nox-model" },
       sessionManager: { getEntries: () => entries },
-      getContextUsage: () => ({
-        tokens: 420,
-        contextWindow: 1_000,
-        percent: 42,
-      }),
+      getContextUsage: () => currentContextUsage,
     },
     setEntries: (next: unknown[]) => {
       entries = next;
+    },
+    setContextUsage: (next: ReturnType<typeof contextUsage> | undefined) => {
+      currentContextUsage = next;
     },
   };
 }
@@ -121,6 +152,107 @@ test("commands and shortcuts cycle modes and reject invalid input without changi
   ]);
 });
 
+test("context warning fires once on an initial upward crossing and does not duplicate above 80%", () => {
+  const { ctx, calls, setContextUsage } = createContext();
+  setContextUsage(contextUsage(79));
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  calls.length = 0;
+  setContextUsage(contextUsage(80));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(92));
+  controller.refresh(ctx as never);
+
+  assert.deepEqual(contextWarnings(calls), [
+    ["notify", CONTEXT_WARNING, "warning"],
+  ]);
+});
+
+test("context warning rearms only after valid usage falls strictly below 75%", () => {
+  const { ctx, calls, setContextUsage } = createContext();
+  setContextUsage(contextUsage(79));
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  calls.length = 0;
+  setContextUsage(contextUsage(80));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(75));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(81));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(74.9));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(80));
+  controller.refresh(ctx as never);
+
+  assert.deepEqual(contextWarnings(calls), [
+    ["notify", CONTEXT_WARNING, "warning"],
+    ["notify", CONTEXT_WARNING, "warning"],
+  ]);
+});
+
+test("unavailable context neither alerts nor falsely rearms, while valid post-compaction usage can rearm", () => {
+  const { ctx, calls, setContextUsage } = createContext();
+  setContextUsage(contextUsage(79));
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  calls.length = 0;
+  setContextUsage(contextUsage(80));
+  controller.refresh(ctx as never);
+  setContextUsage(undefined);
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(82));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(null));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(74.9));
+  controller.refresh(ctx as never);
+  setContextUsage(contextUsage(80));
+  controller.refresh(ctx as never);
+
+  assert.deepEqual(contextWarnings(calls), [
+    ["notify", CONTEXT_WARNING, "warning"],
+    ["notify", CONTEXT_WARNING, "warning"],
+  ]);
+});
+
+test("context warning state resets on cleanup and for a new session", () => {
+  const first = createContext();
+  first.setContextUsage(contextUsage(80));
+  const controller = createVisualController();
+
+  controller.start(first.ctx as never);
+  controller.cleanup(first.ctx as never);
+  controller.start(first.ctx as never);
+  assert.equal(contextWarnings(first.calls).length, 2);
+
+  const fresh = createContext();
+  fresh.setContextUsage(contextUsage(80));
+  createVisualController().start(fresh.ctx as never);
+  assert.equal(contextWarnings(fresh.calls).length, 1);
+});
+
+test("context warning protects compact, detailed, and off modes while UI exists", () => {
+  for (const mode of ["compact", "detailed", "off"] as const) {
+    const { ctx, calls, setContextUsage } = createContext();
+    setContextUsage(contextUsage(79));
+    const controller = createVisualController();
+
+    controller.start(ctx as never);
+    controller.setMode(mode, ctx as never);
+    calls.length = 0;
+    setContextUsage(contextUsage(80));
+    controller.refresh(ctx as never);
+
+    assert.deepEqual(contextWarnings(calls), [
+      ["notify", CONTEXT_WARNING, "warning"],
+    ]);
+  }
+});
+
 test("refreshes finalized telemetry and reduces interleaved concurrent tool lifecycles", () => {
   const { ctx, calls, setEntries } = createContext();
   const controller = createVisualController();
@@ -173,6 +305,58 @@ test("refreshes finalized telemetry and reduces interleaved concurrent tool life
   assert.equal(Object.keys(controller.state.activeTools).length, 0);
 });
 
+test("detailed mode clears compact status, keeps a static card title, and refreshes only on lifecycle events", async () => {
+  const { ctx, calls } = createContext();
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  calls.length = 0;
+  controller.setMode("detailed", ctx as never);
+  assert.ok(
+    calls.some(
+      (call) =>
+        call[0] === "status" &&
+        call[1] === NOX_GENTLE_SHELL_STATUS_KEY &&
+        call[2] === undefined,
+    ),
+  );
+
+  controller.updateTools(
+    { type: "start", toolCallId: "active", toolName: "bash" },
+    ctx as never,
+  );
+  const component = calls
+    .filter((call) => call[0] === "widget")
+    .at(-1)?.[2] as Function;
+  const activeCard = component(
+    {},
+    { fg: (_color: string, text: string) => text },
+  ).render(40);
+  assert.ok(activeCard[0].startsWith("┌─ Nox 🌑 "));
+  assert.ok(activeCard.some((line: string) => line.includes("⚙ bash")));
+
+  const widgetRefreshes = calls.filter((call) => call[0] === "widget").length;
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  assert.equal(
+    calls.filter((call) => call[0] === "widget").length,
+    widgetRefreshes,
+  );
+
+  controller.updateTools(
+    { type: "end", toolCallId: "active", toolName: "bash" },
+    ctx as never,
+  );
+  const idleComponent = calls
+    .filter((call) => call[0] === "widget")
+    .at(-1)?.[2] as Function;
+  const idleCard = idleComponent(
+    {},
+    { fg: (_color: string, text: string) => text },
+  ).render(40);
+  assert.ok(idleCard[0].startsWith("┌─ Nox 🌑 "));
+  assert.ok(calls.every(([surface]) => !SINGLETON_UI_SURFACES.has(surface)));
+});
+
 test("detailed TUI widgets render every Unicode model line within the terminal width", () => {
   const { ctx, calls } = createContext();
   ctx.model = { provider: "nox", id: "模型👨‍👩‍👧‍👦-with-a-very-long-label" };
@@ -189,22 +373,139 @@ test("detailed TUI widgets render every Unicode model line within the terminal w
   );
   const lines = component.render(12);
   assert.ok(lines.every((line: string) => visibleWidth(line) <= 12));
-  assert.ok(lines.some((line: string) => line.includes("model")));
+  assert.ok(lines.some((line: string) => line.startsWith("│ ◆ ")));
 });
 
-test("detailed RPC widgets remain public string arrays at a deterministic fallback width", () => {
+test("detailed RPC widgets refresh on tool lifecycle events without periodic updates", async () => {
   const { ctx, calls } = createContext("rpc");
   ctx.model = { provider: "nox", id: "模型👨‍👩‍👧‍👦-with-a-very-long-label" };
   const controller = createVisualController();
 
   controller.start(ctx as never);
   controller.setMode("detailed", ctx as never);
+  controller.updateTools(
+    { type: "start", toolCallId: "active", toolName: "bash" },
+    ctx as never,
+  );
 
   const widget = calls.filter((call) => call[0] === "widget").at(-1);
   assert.ok(Array.isArray(widget?.[2]));
   assert.ok(
     (widget?.[2] as string[]).every((line) => visibleWidth(line) <= 120),
   );
+  assert.ok((widget?.[2] as string[]).some((line) => line.includes("⚙ bash")));
+
+  const widgetRefreshes = calls.filter((call) => call[0] === "widget").length;
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  assert.equal(
+    calls.filter((call) => call[0] === "widget").length,
+    widgetRefreshes,
+  );
+
+  controller.updateTools(
+    { type: "end", toolCallId: "active", toolName: "bash" },
+    ctx as never,
+  );
+  assert.equal(
+    calls.filter((call) => call[0] === "widget").length,
+    widgetRefreshes + 1,
+  );
+});
+
+test("accepted rail rendering reads the current public context theme", () => {
+  let declaration:
+    | { render: (width?: number) => readonly string[] }
+    | undefined;
+  const events = {
+    emit(_event: string, payload: unknown) {
+      const request = payload as {
+        declaration: { render: (width?: number) => readonly string[] };
+        respond(response: unknown): void;
+      };
+      declaration = request.declaration;
+      request.respond({
+        accepted: true,
+        lease: { update() {}, invalidate() {}, dispose() {} },
+      });
+    },
+  };
+  const { ctx } = createContext();
+  const initial = createRecordingTheme();
+  const current = createRecordingTheme();
+  (ctx.ui as { theme?: Theme }).theme = initial.theme;
+  const controller = createVisualController(events);
+
+  controller.start(ctx as never);
+  controller.setMode("detailed", ctx as never);
+  (ctx.ui as { theme?: Theme }).theme = current.theme;
+  const lines = declaration?.render(47) ?? [];
+
+  assert.ok(lines.every((line) => visibleWidth(line) === 47));
+  assert.deepEqual(initial.roles, []);
+  assert.deepEqual([...new Set(current.roles)].sort(), [
+    "accent",
+    "border",
+    "dim",
+    "muted",
+    "text",
+  ]);
+});
+
+test("widget fallback uses its factory callback theme rather than a stale context theme", () => {
+  const { ctx, calls } = createContext();
+  const contextTheme = createRecordingTheme();
+  const callbackTheme = createRecordingTheme();
+  (ctx.ui as { theme?: Theme }).theme = contextTheme.theme;
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  controller.setMode("detailed", ctx as never);
+  const factory = calls
+    .filter((call) => call[0] === "widget")
+    .at(-1)?.[2] as Function;
+  const component = factory({}, callbackTheme.theme);
+  const lines = component.render(20);
+
+  assert.ok(lines.every((line: string) => visibleWidth(line) === 20));
+  assert.deepEqual(contextTheme.roles, []);
+  assert.deepEqual([...new Set(callbackTheme.roles)].sort(), [
+    "accent",
+    "border",
+    "dim",
+    "muted",
+    "text",
+  ]);
+});
+
+test("RPC rendering reads the current public context theme on every refresh", () => {
+  const { ctx, calls } = createContext("rpc");
+  const first = createRecordingTheme();
+  const next = createRecordingTheme();
+  (ctx.ui as { theme?: Theme }).theme = first.theme;
+  const controller = createVisualController();
+
+  controller.start(ctx as never);
+  controller.setMode("detailed", ctx as never);
+  assert.deepEqual([...new Set(first.roles)].sort(), [
+    "accent",
+    "border",
+    "dim",
+    "muted",
+    "text",
+  ]);
+
+  (ctx.ui as { theme?: Theme }).theme = next.theme;
+  controller.refresh(ctx as never);
+  const widget = calls.filter((call) => call[0] === "widget").at(-1)?.[2];
+  assert.ok(Array.isArray(widget));
+  assert.ok((widget as string[]).every((line) => visibleWidth(line) === 120));
+  assert.deepEqual([...new Set(next.roles)].sort(), [
+    "accent",
+    "border",
+    "dim",
+    "muted",
+    "text",
+  ]);
 });
 
 test("print and JSON modes never issue visual calls, even after commands", () => {

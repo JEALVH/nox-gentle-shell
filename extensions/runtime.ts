@@ -31,6 +31,10 @@ export interface VisualRuntimeState {
 /** RPC widgets have no terminal width, so use one stable public string-array width. */
 const RPC_WIDGET_WIDTH = 120;
 const RENDER_WIDTH = 120;
+const CONTEXT_WARNING_THRESHOLD = 80;
+const CONTEXT_REARM_THRESHOLD = 75;
+const CONTEXT_WARNING =
+  "Context usage reached {percent}%. Start a new session soon to avoid automatic compaction.";
 const NEXT_MODE: Readonly<Record<VisualMode, VisualMode>> = {
   compact: "detailed",
   detailed: "off",
@@ -39,6 +43,23 @@ const NEXT_MODE: Readonly<Record<VisualMode, VisualMode>> = {
 
 function modelIdentity(ctx: ExtensionContext): string | undefined {
   return ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined;
+}
+
+function railRenderWidth(width: number | undefined): number {
+  return typeof width === "number" && Number.isSafeInteger(width) && width > 0
+    ? width
+    : RENDER_WIDTH;
+}
+
+function isValidContextPercent(
+  percent: number | null | undefined,
+): percent is number {
+  return (
+    typeof percent === "number" &&
+    Number.isFinite(percent) &&
+    percent >= 0 &&
+    percent <= 100
+  );
 }
 
 function emptyState(): VisualRuntimeState {
@@ -61,14 +82,12 @@ export interface VisualController {
   cleanup(ctx: ExtensionContext): void;
 }
 
-/**
- * Stateful orchestration seam for public Pi lifecycle hooks. It never stores a
- * host context, so shutdown can release the session without retaining it.
- */
+/** Stateful orchestration seam for public Pi lifecycle hooks. */
 export function createVisualController(
   events?: FullscreenContributionEvents,
 ): VisualController {
   let state = emptyState();
+  let contextWarningArmed = true;
   const fullscreenContribution = createFullscreenContributionClient(events);
 
   const refreshSnapshot = (ctx: ExtensionContext) => {
@@ -88,6 +107,26 @@ export function createVisualController(
     ctx.ui.setWidget(NOX_GENTLE_SHELL_WIDGET_KEY, undefined);
   };
 
+  const evaluateContextWarning = (ctx: ExtensionContext) => {
+    if (!ctx.hasUI) return;
+
+    const percent = state.telemetry?.context.percent;
+    if (!isValidContextPercent(percent)) return;
+
+    if (percent < CONTEXT_REARM_THRESHOLD) {
+      contextWarningArmed = true;
+      return;
+    }
+
+    if (contextWarningArmed && percent >= CONTEXT_WARNING_THRESHOLD) {
+      contextWarningArmed = false;
+      ctx.ui.notify(
+        CONTEXT_WARNING.replace("{percent}", String(percent)),
+        "warning",
+      );
+    }
+  };
+
   const apply = (ctx: ExtensionContext) => {
     if (state.mode !== "detailed" || ctx.mode !== "tui") {
       fullscreenContribution.dispose();
@@ -100,38 +139,52 @@ export function createVisualController(
     }
 
     const telemetry = state.telemetry;
+    if (state.mode === "detailed") {
+      ctx.ui.setStatus(NOX_GENTLE_SHELL_STATUS_KEY, undefined);
+    } else if (telemetry) {
+      ctx.ui.setStatus(
+        NOX_GENTLE_SHELL_STATUS_KEY,
+        renderCompactTelemetry({
+          telemetry,
+          activeTools: state.activeTools,
+          maxWidth: RENDER_WIDTH,
+        }),
+      );
+    }
     if (!telemetry) return;
 
-    ctx.ui.setStatus(
-      NOX_GENTLE_SHELL_STATUS_KEY,
-      renderCompactTelemetry({
-        telemetry,
-        activeTools: state.activeTools,
-        maxWidth: RENDER_WIDTH,
-      }),
-    );
-
     if (state.mode === "detailed") {
-      const renderDetail = (width: number) =>
+      const renderDetail = (width?: number) =>
         renderDetailedTelemetry({
           telemetry,
           activeTools: state.activeTools,
           model: state.model,
-          maxWidth: width,
+          maxWidth: railRenderWidth(width),
+          theme: ctx.ui.theme,
         });
       if (ctx.mode === "tui") {
         const accepted = fullscreenContribution.update({
           version: 1,
           key: NOX_GENTLE_SHELL_FULLSCREEN_CONTRIBUTION_KEY,
           surface: "rail",
-          render: () => renderDetail(RENDER_WIDTH),
+          render: renderDetail,
           fallback: "widget",
         });
         ctx.ui.setWidget(
           NOX_GENTLE_SHELL_WIDGET_KEY,
           accepted
             ? undefined
-            : (_tui, _theme) => ({ render: renderDetail, invalidate() {} }),
+            : (_tui, theme) => ({
+                render: (width?: number) =>
+                  renderDetailedTelemetry({
+                    telemetry,
+                    activeTools: state.activeTools,
+                    model: state.model,
+                    maxWidth: railRenderWidth(width),
+                    theme,
+                  }),
+                invalidate() {},
+              }),
         );
       } else {
         ctx.ui.setWidget(
@@ -158,10 +211,12 @@ export function createVisualController(
     },
     start(ctx) {
       refreshSnapshot(ctx);
+      evaluateContextWarning(ctx);
       apply(ctx);
     },
     refresh(ctx) {
       refreshSnapshot(ctx);
+      evaluateContextWarning(ctx);
       apply(ctx);
     },
     updateTools(event, ctx) {
@@ -221,6 +276,7 @@ export function createVisualController(
       fullscreenContribution.dispose();
       clearVisuals(ctx);
       state = emptyState();
+      contextWarningArmed = true;
     },
   };
 }

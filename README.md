@@ -55,10 +55,19 @@ Telemetry combines current context usage from Pi with **finalized** usage stored
 
 It is not a continuously streaming exact token or cost total. Missing host data, including the period immediately after compaction, is rendered as `—` or omitted. It deliberately does not inspect process, CPU, RAM, battery, or operating-system metrics.
 
+### Context safety warning
+
+While a Pi UI exists, Nox emits one extension-owned warning when valid context usage reaches `80%` or higher. The event-driven warning is active in compact, detailed, and off modes; it adds no timer or polling. It does not repeat while usage remains at or above the threshold and rearms only after valid usage falls strictly below `75%`. Missing or unavailable context, including the post-compaction gap, never alerts or rearms; a later valid below-75% reading may rearm it. There is no critical threshold and Nox does not recolor context metrics.
+
+```text
+Context usage reached {percent}%. Start a new session soon to avoid automatic compaction.
+```
+
 ### Symbol legend
 
 | Symbol | Meaning |
 | --- | --- |
+| `◆` | Model identity |
 | `◉` | Context percentage |
 | `↑` | Finalized input tokens |
 | `↓` | Finalized output tokens |
@@ -81,14 +90,16 @@ Compact mode:
 Detailed mode:
 
 ```text
-model claude/sonnet
-context 53.8k / 128k (42%)
-usage (finalized) in 18.2k · out 3.1k · cache 9.4k
-cost (finalized) $0.08
-activity messages 9 · assistant turns 7 · tools bash
+┌─ Nox 🌑 ──────────────────────────────────────────┐
+│ ◆ claude/sonnet                                  │
+│ ◉ 53.8k / 128k (42%)                             │
+│ ↑ 18.2k · ↓ 3.1k · ◇ 9.4k                        │
+│ $ $0.08                                          │
+│ ✉ 9 · ◌ 7 · ⚙ bash                               │
+└──────────────────────────────────────────────────┘
 ```
 
-Narrow TUI widgets render each line against the terminal width, including long Unicode model labels. In detailed TUI mode, Nox emits the public `gentle-pi.fullscreen-contribution/v1` request with the namespaced `nox-gentle-shell.fullscreen-telemetry` rail key and `widget` fallback. A synchronous accepted lease suppresses Nox's duplicate widget; an absent, inactive, invalid, unsupported, or failing host keeps that widget fallback. Nox disposes an accepted lease when leaving detailed mode or shutting down. RPC has no terminal width, so it receives the compatible public string-array widget at a deterministic fallback width.
+Detailed mode clears Nox's compact status, leaving this single titled and one-cell-padded telemetry card with the static `Nox 🌑` title. When Pi supplies a theme, the card reads the active public theme at render time: frame segments use `border`, the title uses `accent`, telemetry glyphs use `muted`, separators use `dim`, and values use `text`. The text fixture above intentionally omits ANSI styling; Nox never hardcodes palette values and pure callers may continue rendering plain strings. Gentle Pi's host prompt owns the sole `🌑`, `☾`, `◯`, `☽`, `🌑` lunar animation for the agent-wide working lifecycle. Narrow TUI widgets render every card line against the terminal width, including long Unicode model labels. In detailed TUI mode, Nox emits the public `gentle-pi.fullscreen-contribution/v1` request with the namespaced `nox-gentle-shell.fullscreen-telemetry` rail key and `widget` fallback. A synchronous accepted lease suppresses Nox's duplicate widget; an absent, inactive, invalid, unsupported, or failing host keeps that widget fallback. Nox disposes an accepted lease when leaving detailed mode or shutting down. RPC has no terminal width, so it receives the compatible public string-array widget at a deterministic fallback width using the current public context theme.
 
 ## Mode matrix
 
@@ -96,7 +107,7 @@ Narrow TUI widgets render each line against the terminal width, including long U
 | --- | --- | --- | --- | --- |
 | Namespaced status | Yes | Fire-and-forget compatible | No | No |
 | Detailed telemetry | Optional public rail contribution, then width-aware widget fallback | String-array widget fallback | No | No |
-| Extension notifications | Explicit actions only | Fire-and-forget compatible | No | No |
+| Extension notifications | Explicit actions and context-safety warning | Fire-and-forget compatible | No | No |
 
 Only extension-owned notifications are branded. Built-in or core alerts cannot be globally restyled, intercepted, or recolored by this package. The package also does not replace Pi's full footer.
 

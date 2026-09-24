@@ -5,7 +5,7 @@ export interface FullscreenContributionDeclaration {
   version: 1;
   key: string;
   surface: "rail";
-  render: () => readonly string[];
+  render: (width?: number) => readonly string[];
   fallback: "widget";
 }
 

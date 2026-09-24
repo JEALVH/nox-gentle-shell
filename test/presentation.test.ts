@@ -38,6 +38,8 @@ const assertWidth = (output: string, maxWidth: number) => {
   );
 };
 
+const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "");
+
 test("Responsive Presentation - Header", () => {
   const theme = createMockTheme();
 
@@ -320,6 +322,109 @@ test("compact telemetry is safe when its Unicode context segment alone must trun
   assertWidth(output, 2);
 });
 
+test("detailed telemetry is one icon-led bordered card with a static title that remains width-safe", () => {
+  const telemetry = {
+    context: { tokens: 53_800, contextWindow: 128_000, percent: 42 },
+    usage: {
+      input: 18_200,
+      output: 3_100,
+      cacheRead: 9_400,
+      cacheWrite: 0,
+      totalTokens: 30_700,
+      cost: 0.08,
+    },
+    counts: { messageEntries: 9, assistantTurns: 7 },
+  };
+  const activeTools = { first: { toolCallId: "first", toolName: "bash" } };
+
+  for (const maxWidth of [1, 2, 8, 20, 80]) {
+    const card = renderDetailedTelemetry({
+      telemetry,
+      activeTools,
+      model: "nox/long-model",
+      maxWidth,
+    });
+    assert.ok(card.every((line) => visibleWidth(line) <= maxWidth));
+    if (maxWidth >= 2) {
+      assert.match(card[0]!, /^┌.*┐$/);
+      assert.match(card.at(-1)!, /^└.*┘$/);
+    }
+  }
+
+  const activeCard = renderDetailedTelemetry({
+    telemetry,
+    activeTools,
+    maxWidth: 80,
+  });
+  const idleCard = renderDetailedTelemetry({
+    telemetry,
+    activeTools: {},
+    maxWidth: 80,
+  });
+  assert.ok(activeCard[0]?.startsWith("┌─ Nox 🌑 "));
+  assert.ok(idleCard[0]?.startsWith("┌─ Nox 🌑 "));
+  assert.ok(activeCard.some((line) => line.includes("⚙ bash")));
+  assert.ok(
+    !activeCard.some((line) => /\b(context|usage|cost|tools)\b/.test(line)),
+  );
+});
+
+test("detailed telemetry renders the model as an exact icon-led row without a label", () => {
+  const model = "openai-codex/gpt-5.6-sol";
+  const lines = renderDetailedTelemetry({
+    telemetry: {
+      context: { tokens: 0, contextWindow: 128_000, percent: 0 },
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: 0,
+      },
+      counts: { messageEntries: 0, assistantTurns: 0 },
+    },
+    activeTools: {},
+    maxWidth: 80,
+    model,
+  });
+
+  assert.ok(!lines.some((line) => line.includes("model ")));
+  assert.ok(lines.some((line) => line.slice(1, -1).trim() === `◆ ${model}`));
+});
+
+test("detailed telemetry permits a custom model symbol", () => {
+  const model = "nox/custom-model";
+  const lines = renderDetailedTelemetry({
+    telemetry: {
+      context: { tokens: 0, contextWindow: 128_000, percent: 0 },
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: 0,
+      },
+      counts: { messageEntries: 0, assistantTurns: 0 },
+    },
+    activeTools: {},
+    maxWidth: 80,
+    model,
+    symbols: {
+      model: "M",
+      context: "C",
+      input: "I",
+      output: "O",
+      cache: "K",
+      cost: "$",
+      tools: "T",
+    },
+  });
+
+  assert.ok(lines.some((line) => line.slice(1, -1).trim() === `M ${model}`));
+});
+
 test("detailed telemetry labels finalized totals and unavailable context", () => {
   const lines = renderDetailedTelemetry({
     telemetry: {
@@ -338,14 +443,112 @@ test("detailed telemetry labels finalized totals and unavailable context", () =>
     maxWidth: 100,
   });
 
+  assert.ok(lines.some((line) => line.includes("◉ unavailable")));
+  assert.ok(lines.some((line) => line.includes("↑ 0") && line.includes("◇ 0")));
+  assert.ok(lines.some((line) => line.includes("$ $0.00")));
+  assert.ok(lines.some((line) => line.includes("◌ 1")));
+});
+
+test("detailed telemetry uses active semantic roles with a titled padded frame", () => {
+  const roles: Array<{ role: string; text: string }> = [];
+  const theme = {
+    ...createMockTheme(),
+    fg: (role: string, text: string) => {
+      roles.push({ role, text });
+      return `\x1b[35m${text}\x1b[0m`;
+    },
+  } as Theme;
+  const telemetry = {
+    context: { tokens: 53_800, contextWindow: 128_000, percent: 42 },
+    usage: {
+      input: 18_200,
+      output: 3_100,
+      cacheRead: 9_400,
+      cacheWrite: 0,
+      totalTokens: 30_700,
+      cost: 0.08,
+    },
+    counts: { messageEntries: 9, assistantTurns: 7 },
+  };
+  const card = renderDetailedTelemetry({
+    telemetry,
+    activeTools: { active: { toolCallId: "active", toolName: "bash" } },
+    model: "nox/模型👨‍👩‍👧‍👦",
+    maxWidth: 47,
+    theme,
+  } as never);
+
+  assert.equal(visibleWidth(card[0]!), 47);
+  assert.ok(card[0]?.includes("Nox 🌑"));
+  assert.ok(card[0]?.includes("\x1b[35mNox 🌑\x1b[0m"));
+  assert.deepEqual([...new Set(roles.map(({ role }) => role))].sort(), [
+    "accent",
+    "border",
+    "dim",
+    "muted",
+    "text",
+  ]);
   assert.ok(
-    lines.some(
-      (line) => line.includes("context") && line.includes("unavailable"),
-    ),
+    roles.some(({ role, text }) => role === "border" && text.includes("┌─ ")),
   );
-  assert.ok(lines.some((line) => line.includes("usage (finalized)")));
-  assert.ok(lines.some((line) => line.includes("cost (finalized)")));
-  assert.ok(lines.some((line) => line.includes("assistant turns 1")));
+  assert.ok(
+    roles.some(({ role, text }) => role === "accent" && text === "Nox 🌑"),
+  );
+  assert.ok(roles.some(({ role, text }) => role === "muted" && text === "◆"));
+  assert.ok(roles.some(({ role, text }) => role === "dim" && text === " · "));
+  assert.ok(
+    roles.some(({ role, text }) => role === "text" && text.includes("nox/")),
+  );
+  assert.ok(
+    card.slice(1, -1).every((line) => stripAnsi(line).startsWith("│ ")),
+  );
+  assert.ok(card.slice(1, -1).every((line) => stripAnsi(line).endsWith(" │")));
+});
+
+test("detailed telemetry keeps plain compatibility and ANSI-aware geometry at every host width", () => {
+  const telemetry = {
+    context: { tokens: 0, contextWindow: 128_000, percent: 0 },
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: 0,
+    },
+    counts: { messageEntries: 0, assistantTurns: 0 },
+  };
+  const ansiTheme = createMockTheme();
+
+  for (const maxWidth of [0, 1, 2, 8, 20, 47, 80]) {
+    const plain = renderDetailedTelemetry({
+      telemetry,
+      activeTools: {},
+      model: "nox/模型👨‍👩‍👧‍👦",
+      maxWidth,
+    });
+    const themed = renderDetailedTelemetry({
+      telemetry,
+      activeTools: {},
+      model: "nox/模型👨‍👩‍👧‍👦",
+      maxWidth,
+      theme: ansiTheme,
+    } as never);
+    assert.deepEqual(
+      plain.map((line) => visibleWidth(line)),
+      themed.map((line) => visibleWidth(line)),
+    );
+    assert.ok(themed.every((line) => visibleWidth(line) === maxWidth));
+    assert.ok(plain.every((line) => !line.includes("\x1b[")));
+  }
+  assert.deepEqual(
+    renderDetailedTelemetry({ telemetry, activeTools: {}, maxWidth: 0 }),
+    [],
+  );
+  assert.deepEqual(
+    renderDetailedTelemetry({ telemetry, activeTools: {}, maxWidth: 1 }),
+    ["│"],
+  );
 });
 
 describe("Edge cases and Matrix testing", () => {
