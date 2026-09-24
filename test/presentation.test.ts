@@ -551,6 +551,85 @@ test("detailed telemetry keeps plain compatibility and ANSI-aware geometry at ev
   );
 });
 
+test("Spotify card separates status and track while retaining telemetry without a nested border", () => {
+  const telemetry = {
+    context: { tokens: 10, contextWindow: 100, percent: 10 },
+    usage: {
+      input: 2,
+      output: 3,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 5,
+      cost: 0,
+    },
+    counts: { messageEntries: 1, assistantTurns: 1 },
+  };
+  const spotify = {
+    playback: {
+      is_playing: false,
+      progress_ms: 1000,
+      item: {
+        name: "Long 🎵 song",
+        duration_ms: 10000,
+        artists: [{ name: "Artist" }],
+        external_urls: { spotify: "https://open.spotify.com/track/abc" },
+      },
+    },
+    updatedAt: 1000,
+  };
+  for (const maxWidth of [1, 2, 8, 20, 47, 80]) {
+    const card = renderDetailedTelemetry({
+      telemetry,
+      activeTools: {},
+      maxWidth,
+      spotify,
+      now: 5000,
+      theme: createMockTheme(),
+    });
+    assert.ok(card.every((line) => visibleWidth(line) === maxWidth));
+    assert.equal(
+      card.filter((line) => stripAnsi(line).includes("┌")).length,
+      maxWidth >= 2 ? 1 : 0,
+    );
+    if (maxWidth >= 8)
+      assert.ok(card.some((line) => stripAnsi(line).includes("◉")));
+  }
+  const full = stripAnsi(
+    renderDetailedTelemetry({
+      telemetry,
+      activeTools: {},
+      maxWidth: 80,
+      spotify,
+      now: 5000,
+      theme: createMockTheme(),
+    }).join("\n"),
+  );
+  assert.match(full, /Spotify · ⏸/);
+  assert.match(full, /Long 🎵 song — Artist/);
+  assert.match(full, /0:01\/0:10/);
+  for (const state of [
+    spotify,
+    { ...spotify, playback: { ...spotify.playback, is_playing: true } },
+    { playback: null, updatedAt: 1000 },
+  ]) {
+    const rows = renderDetailedTelemetry({
+      telemetry,
+      activeTools: {},
+      maxWidth: 80,
+      spotify: state,
+      now: 5000,
+    });
+    const statusRow = rows.findIndex((line) => line.includes("Spotify"));
+    const detailRow = rows.findIndex((line) =>
+      line.includes(state.playback ? "Long 🎵 song" : "No active playback"),
+    );
+    assert.ok(
+      statusRow >= 0 && detailRow > statusRow,
+      "status and detail occupy distinct rows",
+    );
+  }
+});
+
 describe("Edge cases and Matrix testing", () => {
   const theme = createMockTheme();
   const testInputs = [

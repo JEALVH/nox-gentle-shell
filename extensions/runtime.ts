@@ -13,6 +13,10 @@ import {
   renderDetailedTelemetry,
 } from "./presentation.js";
 import {
+  createSpotifyController,
+  type SpotifyController,
+} from "./spotify-ui.js";
+import {
   aggregateTelemetry,
   reduceActiveTools,
   type ActiveToolEvent,
@@ -73,6 +77,12 @@ function emptyState(): VisualRuntimeState {
 
 export interface VisualController {
   readonly state: Readonly<VisualRuntimeState>;
+  readonly spotify: SpotifyController;
+  setSpotifyOverlayOpen(open: boolean, ctx: ExtensionContext): void;
+  setSpotifyOverlayClose(
+    close: (() => void) | undefined,
+    expected?: () => void,
+  ): void;
   start(ctx: ExtensionContext): void;
   refresh(ctx: ExtensionContext): void;
   updateTools(event: ActiveToolEvent, ctx: ExtensionContext): void;
@@ -85,10 +95,36 @@ export interface VisualController {
 /** Stateful orchestration seam for public Pi lifecycle hooks. */
 export function createVisualController(
   events?: FullscreenContributionEvents,
+  spotify?: SpotifyController,
 ): VisualController {
   let state = emptyState();
   let contextWarningArmed = true;
   const fullscreenContribution = createFullscreenContributionClient(events);
+  const spotifyController =
+    spotify ??
+    createSpotifyController({
+      onChange: () => {
+        if (lastContext) apply(lastContext);
+      },
+    });
+  let lastContext: ExtensionContext | undefined;
+  let spotifyOverlayOpen = false;
+  let closeSpotifyOverlay: (() => void) | undefined;
+  const closeOverlay = () => {
+    const close = closeSpotifyOverlay;
+    closeSpotifyOverlay = undefined;
+    spotifyOverlayOpen = false;
+    close?.();
+  };
+  const syncSpotify = (ctx: ExtensionContext) => {
+    lastContext = ctx;
+    spotifyController.setVisible(
+      ctx.mode === "tui" &&
+        (state.mode === "detailed" ||
+          (spotifyOverlayOpen && state.mode !== "off")) &&
+        spotifyController.configured,
+    );
+  };
 
   const refreshSnapshot = (ctx: ExtensionContext) => {
     state = {
@@ -161,6 +197,7 @@ export function createVisualController(
           model: state.model,
           maxWidth: railRenderWidth(width),
           theme: ctx.ui.theme,
+          spotify: ctx.mode === "tui" ? spotifyController.snapshot : undefined,
         });
       if (ctx.mode === "tui") {
         const accepted = fullscreenContribution.update({
@@ -182,6 +219,7 @@ export function createVisualController(
                     model: state.model,
                     maxWidth: railRenderWidth(width),
                     theme,
+                    spotify: spotifyController.snapshot,
                   }),
                 invalidate() {},
               }),
@@ -209,14 +247,27 @@ export function createVisualController(
     get state() {
       return state;
     },
+    get spotify() {
+      return spotifyController;
+    },
+    setSpotifyOverlayOpen(open, ctx) {
+      spotifyOverlayOpen = open;
+      syncSpotify(ctx);
+    },
+    setSpotifyOverlayClose(close, expected) {
+      if (expected && closeSpotifyOverlay !== expected) return;
+      closeSpotifyOverlay = close;
+    },
     start(ctx) {
       refreshSnapshot(ctx);
       evaluateContextWarning(ctx);
+      syncSpotify(ctx);
       apply(ctx);
     },
     refresh(ctx) {
       refreshSnapshot(ctx);
       evaluateContextWarning(ctx);
+      syncSpotify(ctx);
       apply(ctx);
     },
     updateTools(event, ctx) {
@@ -227,6 +278,7 @@ export function createVisualController(
       this.refresh(ctx);
     },
     setMode(mode, ctx) {
+      if (mode !== state.mode && mode !== "detailed") closeOverlay();
       state = { ...state, mode };
       this.refresh(ctx);
     },
@@ -273,8 +325,12 @@ export function createVisualController(
       );
     },
     cleanup(ctx) {
+      closeOverlay();
       fullscreenContribution.dispose();
       clearVisuals(ctx);
+      spotifyOverlayOpen = false;
+      spotifyController.dispose();
+      lastContext = undefined;
       state = emptyState();
       contextWarningArmed = true;
     },
