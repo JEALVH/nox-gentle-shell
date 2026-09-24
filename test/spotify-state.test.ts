@@ -95,6 +95,12 @@ test("two reservations fence the first, and malformed metadata fails closed", ()
   assert.throws(() => first.reserveIntent("login"), /unavailable/);
 });
 
+test("absent configured root initializes durable state", () => {
+  const root = join(mkdtempSync(join(tmpdir(), "nox-state-test-")), "state");
+  const state = durableSpotifyState("public-id", root);
+  assert.doesNotThrow(() => state.reserve("connected"));
+});
+
 test("absent state never implies a connected credential", () => {
   const home = mkdtempSync(join(tmpdir(), "nox-state-test-"));
   assert.equal(durableSpotifyState("public-id", home).read(), null);

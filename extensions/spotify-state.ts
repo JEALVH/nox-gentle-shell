@@ -59,6 +59,7 @@ export function durableSpotifyState(
       throw invalid();
   };
   const prepare = () => {
+    mkdirSync(root, { recursive: true, mode: 0o700 });
     checkDirectory(root);
     try {
       mkdirSync(directory, { mode: 0o700 });
