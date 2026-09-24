@@ -1,6 +1,7 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ActiveTools, TelemetrySnapshot } from "./telemetry.js";
+import { spotifyLabel, type SpotifySnapshot } from "./spotify-ui.js";
 
 export interface HeaderOptions {
   title: string;
@@ -157,6 +158,8 @@ export interface TelemetryRenderOptions {
   symbols?: TelemetrySymbols;
   /** Optional so pure callers retain the existing unstyled string contract. */
   theme?: Theme;
+  spotify?: SpotifySnapshot;
+  now?: number;
 }
 
 function formatCompactNumber(value: number): string {
@@ -293,6 +296,8 @@ export function renderDetailedTelemetry({
   model,
   symbols = DEFAULT_TELEMETRY_SYMBOLS,
   theme,
+  spotify,
+  now,
 }: TelemetryRenderOptions): string[] {
   const { context, usage, counts } = telemetry;
   const contextValue =
@@ -329,6 +334,22 @@ export function renderDetailedTelemetry({
           tools.length === 0 ? "—" : tools.join(", "),
         ),
       ].join(telemetrySeparator(theme)),
+      ...(spotifyLabel(spotify, now)
+        ? (() => {
+            const label = spotifyLabel(spotify, now) ?? "";
+            const separator = label.indexOf(" · ");
+            if (separator < 0) return [telemetryRole(theme, "accent", label)];
+            const detail = label.slice(separator + 3);
+            const marker =
+              detail.startsWith("▶") || detail.startsWith("⏸")
+                ? detail.slice(0, 1)
+                : "";
+            return [
+              `${telemetryRole(theme, "accent", "Spotify")} ${telemetryRole(theme, "muted", "·")} ${telemetryRole(theme, "text", marker || "—")}`,
+              telemetryRole(theme, "text", marker ? detail.slice(2) : detail),
+            ];
+          })()
+        : []),
     ],
     maxWidth,
     theme,
